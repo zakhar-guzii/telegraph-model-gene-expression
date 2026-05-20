@@ -71,3 +71,6 @@ def simulate_telegraph(
 
 def compute_sample_moments(array):
     pass
+
+def show_sample_moments():
+    pass
