@@ -69,7 +69,7 @@ def simulate_telegraph(
     return data
 
 
-def compute_sample_moments(data) -> np.array:
+def compute_sample_moments(data) -> dict:
     """Task 2: sapmle statistics of gene state and RNA count across trajectories
 
     For each recorded time step, calculates the cross-trajectory mean, standard
@@ -116,7 +116,3 @@ def compute_sample_moments(data) -> np.array:
         "sigma_R": sigma_R,
         "cov_RG": cov_RG,
     }
-
-
-def show_sample_moments():
-    pass
