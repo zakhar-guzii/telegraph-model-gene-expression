@@ -69,8 +69,54 @@ def simulate_telegraph(
     return data
 
 
-def compute_sample_moments(array):
-    pass
+def compute_sample_moments(data) -> np.array:
+    """Task 2: sapmle statistics of gene state and RNA count across trajectories
+
+    For each recorded time step, calculates the cross-trajectory mean, standard
+    deviation, and covariance of the gene state G and RNA count R.
+
+     Args:
+        data (np.ndarray): Simulation output of shape ``(n_sim + 1, n_rep, 3)``
+            as returned by :func:`simulate_telegraph`, where axis-2 contains:
+
+            - [:, :, 0] : Simulation time.
+            - [:, :, 1] : Gene state (0 = OFF, 1 = ON).
+            - [:, :, 2] : RNA molecule count.
+
+    Returns:
+        dict: A dictionary with one 1-D array of length ``n_sim + 1`` per key:
+
+            - "time"    : Mean simulation time across trajectories at each step.
+            - "mu_G"    : Sample mean of gene state  E[G].
+            - "mu_R"   : Sample mean of RNA count   E[R].
+            - "sigma_G" : Sample std  of gene state  sqrt(Var[G]).
+            - "sigma_R" : Sample std  of RNA count   sqrt(Var[R]).
+            - "cov_RG"  : Sample covariance          Cov(R, G).
+    """
+    t_data = data[:, :, 0]
+    G = data[:, :, 1]
+    R = data[:, :, 2]
+
+    mean_t = np.mean(t_data, axis=1)
+    mu_G = np.mean(G, axis=1)
+    mu_R = np.mean(R, axis=1)
+
+    sigma_G = np.std(G, axis=1, ddof=1)  # Is it need to do Bessel's correction?
+    sigma_R = np.std(R, axis=1, ddof=1)
+
+    cov_RG = np.sum((G - mu_G[:, None]) * (R - mu_R[:, None]), axis=1) / (
+        G.shape[1] - 1
+    )
+
+    return {
+        "time": mean_t,
+        "mu_G": mu_G,
+        "mu_R": mu_R,
+        "sigma_G": sigma_G,
+        "sigma_R": sigma_R,
+        "cov_RG": cov_RG,
+    }
+
 
 def show_sample_moments():
     pass
