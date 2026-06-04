@@ -32,13 +32,11 @@ def simulate_telegraph(
     data[0, :, 1] = g0
     data[0, :, 2] = r0
 
-    # Outer loop: each trajectory is independent
     for j in range(n_rep):
         t = t0
         g = g0
         r = r0
 
-        # Inner loop: advance one reaction event per iteration.
         for i in range(1, n_sim + 1):
             a1 = k_on * (1 - g)
             a2 = k_off * g
