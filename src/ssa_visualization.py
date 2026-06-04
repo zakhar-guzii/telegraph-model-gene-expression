@@ -1,12 +1,11 @@
 import numpy as np
 import plotly.graph_objects as go
 
-# ── colour palette ──────────────────────────────────────────────────────────
-_BLUE = "#3B82F6"       # gene state G  (vivid blue)
+_BLUE = "#3B82F6"       # gene state G  
 _BLUE_LIGHT = "rgba(59, 130, 246, 0.12)"
-_RED = "#EF4444"         # RNA count R   (vivid red)
+_RED = "#EF4444"         # RNA count R  
 _RED_LIGHT = "rgba(239, 68, 68, 0.12)"
-_PURPLE = "#8B5CF6"      # covariance    (vivid purple)
+_PURPLE = "#8B5CF6"      # covariance   
 _PURPLE_LIGHT = "rgba(139, 92, 246, 0.12)"
 _SS_DASH = dict(dash="dot", width=1.5)
 _FONT = "Inter, SF Pro Display, -apple-system, Helvetica Neue, Arial, sans-serif"
@@ -19,8 +18,8 @@ def _base_layout(
     figsize: tuple[float, float],
 ) -> dict:
     """Return a Plotly layout dict with a clean, modern scientific look."""
-    w_px = int(figsize[0] * 150)   # scale inches → pixels
-    h_px = int(figsize[1] * 150)
+    w_px = int(figsize[0] * 200)  
+    h_px = int(figsize[1] * 200)
     return dict(
         width=w_px,
         height=h_px,
@@ -74,7 +73,6 @@ def _base_layout(
     )
 
 
-# ── helpers ─────────────────────────────────────────────────────────────────
 def _steady_state_estimate(y: np.ndarray) -> float:
     """Average the last 10 % of a time-series as a steady-state proxy."""
     tail = max(1, len(y) // 10)
@@ -184,7 +182,7 @@ def show_sample_moments(
     sigma_R = moments["sigma_R"]
     cov_RG = moments["cov_RG"]
 
-    # ── Panel (a): Gene state ⟨G⟩ ± σ ──────────────────────────────────
+    # ── Panel (a): Gene state ⟨G⟩ ± σ 
     fig_gene = go.Figure(layout=_base_layout(
         title="<b>a</b>  Gene state", ylabel="⟨G⟩", figsize=figsize,
     ))
@@ -199,7 +197,7 @@ def show_sample_moments(
     ss_G = _steady_state_estimate(mu_G)
     _add_ss_line(fig_gene, t, ss_G, _BLUE, fmt=".2f")
 
-    # ── Panel (b): RNA count ⟨R⟩ ± σ ───────────────────────────────────
+    # ── Panel (b): RNA count ⟨R⟩ ± σ 
     fig_rna = go.Figure(layout=_base_layout(
         title="<b>b</b>  RNA count", ylabel="⟨R⟩ (molecules)", figsize=figsize,
     ))
@@ -216,7 +214,7 @@ def show_sample_moments(
     ss_R = _steady_state_estimate(mu_R)
     _add_ss_line(fig_rna, t, ss_R, _RED, fmt=".1f")
 
-    # ── Panel (c): Covariance Cov(R, G) ────────────────────────────────
+    # ── Panel (c): Covariance Cov(R, G) 
     fig_cov = go.Figure(layout=_base_layout(
         title="<b>c</b>  Gene–RNA covariance",
         ylabel="Cov(R, G)",
