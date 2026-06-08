@@ -4,10 +4,7 @@ import numpy as np
 def simulate_telegraph(
     k_on, k_off, k_syn, k_deg, t0, g0, r0, n_sim, n_rep
 ) -> np.ndarray:
-    """Task 1: Simulates stochastic gene expression trajectories using the Gillespie SSA.
-
-    Implements the continuous-time Markov chain to track the binary state of a gene
-    (ON/OFF) and discrete RNA molecule counts.
+    """Simulates stochastic gene expression trajectories using the Gillespie SSA.
 
     Args:
         k_on (float): Rate constant for gene activation (OFF -> ON).
@@ -68,7 +65,7 @@ def simulate_telegraph(
 
 
 def compute_sample_moments(data) -> dict:
-    """Task 2: sapmle statistics of gene state and RNA count across trajectories
+    """Computes sample statistics of gene state and RNA count across trajectories
 
     For each recorded time step, calculates the cross-trajectory mean, standard
     deviation, and covariance of the gene state G and RNA count R.
