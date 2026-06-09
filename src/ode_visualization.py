@@ -69,12 +69,7 @@ def show_ode_moments(
         row=1,
         col=1,
     )
-    fig.add_hline(
-        y=ss_G,
-        line=dict(color="#1E40AF", width=1.2, dash="dash"),
-        row=1,
-        col=1,
-    )
+    
 
     # Panel (b)
     fig.add_trace(
@@ -115,9 +110,7 @@ def show_ode_moments(
         row=2,
         col=1,
     )
-    fig.add_hline(
-        y=ss_R, line=dict(color="#B91C1C", width=1.2, dash="dash"), row=2, col=1
-    )
+    
 
     # Panel (c)
     fig.add_trace(
@@ -129,12 +122,6 @@ def show_ode_moments(
             legendgroup="cov",
             hovertemplate="Cov = %{y:.3f}<extra></extra>",
         ),
-        row=3,
-        col=1,
-    )
-    fig.add_hline(
-        y=ss_cov,
-        line=dict(color="#5B21B6", width=1.2, dash="dash"),
         row=3,
         col=1,
     )
