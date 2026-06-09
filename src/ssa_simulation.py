@@ -16,7 +16,6 @@ def simulate_telegraph(
         r0 (int): Initial number of RNA molecules.
         n_sim (int): Total number of reaction events to simulate per trajectory.
         n_rep (int): Total number of independent parallel trajectories.
-
     Returns:
         np.ndarray: A 3D float/int array of shape (n_sim + 1, n_rep, 3), where:
             - [i, j, 0] = Simulation time at step i, trajectory j.
