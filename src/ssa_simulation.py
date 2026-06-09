@@ -110,3 +110,54 @@ def compute_sample_moments(data) -> dict:
         "sigma_R": sigma_R,
         "cov_RG": cov_RG,
     }
+
+
+def compute_time_grid_moments(data, n_points=500):
+    """Compute moments on a fixed time grid (unbiased estimator).
+
+    Unlike :func:`compute_sample_moments`, which averages at step indices
+    (biased because more events occur when the gene is ON), this function
+    interpolates each trajectory to a common set of time points using
+    piece-wise constant interpolation, then averages across trajectories.
+
+    Args:
+        data (np.ndarray): Simulation output of shape ``(n_sim + 1, n_rep, 3)``
+            as returned by :func:`simulate_telegraph`.
+        n_points (int): Number of equally-spaced time points in the grid.
+
+    Returns:
+        dict: Same keys as :func:`compute_sample_moments`:
+            ``time``, ``mu_G``, ``mu_R``, ``sigma_G``, ``sigma_R``, ``cov_RG``.
+    """
+    n_rep = data.shape[1]
+
+    # Common time range: from 0 to the earliest trajectory end (with 2% margin)
+    t_max = data[-1, :, 0].min()
+    t_grid = np.linspace(0, t_max * 0.98, n_points)
+
+    G_grid = np.zeros((n_points, n_rep))
+    R_grid = np.zeros((n_points, n_rep))
+
+    for j in range(n_rep):
+        t_j = data[:, j, 0]
+        G_j = data[:, j, 1]
+        R_j = data[:, j, 2]
+        # Piece-wise constant: state just before each grid point
+        idx = np.searchsorted(t_j, t_grid, side="right") - 1
+        idx = np.clip(idx, 0, len(t_j) - 1)
+        G_grid[:, j] = G_j[idx]
+        R_grid[:, j] = R_j[idx]
+
+    mu_G = G_grid.mean(axis=1)
+    mu_R = R_grid.mean(axis=1)
+
+    return {
+        "time": t_grid,
+        "mu_G": mu_G,
+        "mu_R": mu_R,
+        "sigma_G": G_grid.std(axis=1, ddof=1),
+        "sigma_R": R_grid.std(axis=1, ddof=1),
+        "cov_RG": np.array([
+            np.cov(G_grid[i], R_grid[i])[0, 1] for i in range(n_points)
+        ]),
+    }
