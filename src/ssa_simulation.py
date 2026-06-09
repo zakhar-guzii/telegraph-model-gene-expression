@@ -17,7 +17,7 @@ def simulate_telegraph(
         n_sim (int): Total number of reaction events to simulate per trajectory.
         n_rep (int): Total number of independent parallel trajectories.
     Returns:
-        np.ndarray: A 3D float/int array of shape (n_sim + 1, n_rep, 3), where:
+        np.ndarray: A 3D array of shape (n_sim + 1, n_rep, 3), where:
             - [i, j, 0] = Simulation time at step i, trajectory j.
             - [i, j, 1] = Gene state (0 or 1) at step i, trajectory j.
             - [i, j, 2] = RNA  count at step i, trajectory j.
@@ -64,43 +64,42 @@ def simulate_telegraph(
 
 
 def compute_sample_moments(data) -> dict:
-    """Computes sample statistics of gene state and RNA count across trajectories
+    """Computes sample statistics of gene state and RNA count across trajectories.
 
-    For each recorded time step, calculates the cross-trajectory mean, standard
-    deviation, and covariance of the gene state G and RNA count R.
+    For each recorded time step index i, calculates the cross-trajectory mean,
+    standard deviation, and covariance of the gene state G and RNA count R.
 
-     Args:
-        data (np.ndarray): Simulation output of shape ``(n_sim + 1, n_rep, 3)``
-            as returned by :func:`simulate_telegraph`, where axis-2 contains:
-
-            - [:, :, 0] : Simulation time.
-            - [:, :, 1] : Gene state (0 = OFF, 1 = ON).
-            - [:, :, 2] : RNA molecule count.
+    Args:
+        data (np.ndarray): Simulation output of shape (n_sim + 1, n_rep, 3)
+            as returned by :func:`simulate_telegraph`.
 
     Returns:
-        dict: A dictionary with one 1-D array of length ``n_sim + 1`` per key:
-
+        dict: A dictionary with 1-D arrays of length n_sim + 1:
             - "time"    : Mean simulation time across trajectories at each step.
-            - "mu_G"    : Sample mean of gene state  E[G].
-            - "mu_R"   : Sample mean of RNA count   E[R].
-            - "sigma_G" : Sample std  of gene state  sqrt(Var[G]).
-            - "sigma_R" : Sample std  of RNA count   sqrt(Var[R]).
-            - "cov_RG"  : Sample covariance          Cov(R, G).
+            - "mu_G"    : Sample mean of gene state E[G].
+            - "mu_R"    : Sample mean of RNA count E[R].
+            - "sigma_G" : Sample standard deviation of gene state.
+            - "sigma_R" : Sample standard deviation of RNA count.
+            - "cov_RG"  : Sample covariance Cov(R, G).
     """
-    t_data = data[:, :, 0]
+    t_data = data[:, :, 0] 
     G = data[:, :, 1]
     R = data[:, :, 2]
+
+    n_sim_plus_1, n_rep = G.shape
 
     mean_t = np.mean(t_data, axis=1)
     mu_G = np.mean(G, axis=1)
     mu_R = np.mean(R, axis=1)
 
-    sigma_G = np.std(G, axis=1, ddof=1)  # Is it need to do Bessel's correction?
+    sigma_G = np.std(G, axis=1, ddof=1)
     sigma_R = np.std(R, axis=1, ddof=1)
 
-    cov_RG = np.sum((G - mu_G[:, None]) * (R - mu_R[:, None]), axis=1) / (
-        G.shape[1] - 1
-    )
+    cov_RG = np.zeros(n_sim_plus_1)
+    for i in range(n_sim_plus_1):
+        
+        cov_matrix = np.cov(G[i, :], R[i, :], ddof=1)
+        cov_RG[i] = cov_matrix[0, 1]
 
     return {
         "time": mean_t,
@@ -109,55 +108,4 @@ def compute_sample_moments(data) -> dict:
         "sigma_G": sigma_G,
         "sigma_R": sigma_R,
         "cov_RG": cov_RG,
-    }
-
-
-def compute_time_grid_moments(data, n_points=500):
-    """Compute moments on a fixed time grid (unbiased estimator).
-
-    Unlike :func:`compute_sample_moments`, which averages at step indices
-    (biased because more events occur when the gene is ON), this function
-    interpolates each trajectory to a common set of time points using
-    piece-wise constant interpolation, then averages across trajectories.
-
-    Args:
-        data (np.ndarray): Simulation output of shape ``(n_sim + 1, n_rep, 3)``
-            as returned by :func:`simulate_telegraph`.
-        n_points (int): Number of equally-spaced time points in the grid.
-
-    Returns:
-        dict: Same keys as :func:`compute_sample_moments`:
-            ``time``, ``mu_G``, ``mu_R``, ``sigma_G``, ``sigma_R``, ``cov_RG``.
-    """
-    n_rep = data.shape[1]
-
-    # Common time range: from 0 to the earliest trajectory end (with 2% margin)
-    t_max = data[-1, :, 0].min()
-    t_grid = np.linspace(0, t_max * 0.98, n_points)
-
-    G_grid = np.zeros((n_points, n_rep))
-    R_grid = np.zeros((n_points, n_rep))
-
-    for j in range(n_rep):
-        t_j = data[:, j, 0]
-        G_j = data[:, j, 1]
-        R_j = data[:, j, 2]
-        # Piece-wise constant: state just before each grid point
-        idx = np.searchsorted(t_j, t_grid, side="right") - 1
-        idx = np.clip(idx, 0, len(t_j) - 1)
-        G_grid[:, j] = G_j[idx]
-        R_grid[:, j] = R_j[idx]
-
-    mu_G = G_grid.mean(axis=1)
-    mu_R = R_grid.mean(axis=1)
-
-    return {
-        "time": t_grid,
-        "mu_G": mu_G,
-        "mu_R": mu_R,
-        "sigma_G": G_grid.std(axis=1, ddof=1),
-        "sigma_R": R_grid.std(axis=1, ddof=1),
-        "cov_RG": np.array([
-            np.cov(G_grid[i], R_grid[i])[0, 1] for i in range(n_points)
-        ]),
     }
