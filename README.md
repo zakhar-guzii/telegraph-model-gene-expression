@@ -159,8 +159,3 @@ show_ode_moments(t, y)
 
 For the full analysis, open the notebooks in the `notebooks/` directory and run
 them top to bottom.
-
-## License
-
-This project was produced for academic coursework. Reuse for educational
-purposes is permitted with attribution.
