@@ -105,7 +105,7 @@ def compute_sample_moments(data, t_end=None, n_grid=1000, time_step=None) -> dic
 
     t0 = t_data[0, 0]  # initial time, identical across trajectories
 
-    # Shared grid end: default to the earliest-finishing trajectory (no extrapolation).
+    # Shared grid end: default to the earliest-finishing trajectory.
     if t_end is None:
         t_end = t_data[-1, :].min()
 

@@ -2,12 +2,8 @@ import numpy as np
 
 
 def sample_steady_state(k_on, k_off, k_syn, k_deg, n_rep) -> dict:
-    """ Draws independent samples from the steady-state joint distribution
+    """Draws independent samples from the steady-state joint distribution
     of the telegraph model and computes their empirical sample moments.
-
-    Uses the exact hierarchical Beta-Poisson-Bernoulli mixture representation
-    of the steady-state system to efficiently generate paired samples of gene
-    states and RNA counts without performing a costly time-course simulation.
 
     Args:
         k_on (float): Rate constant for gene activation (OFF -> ON).

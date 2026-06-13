@@ -3,12 +3,7 @@ from plotly.subplots import make_subplots
 
 
 def show_ode_moments(t, y, title=None):
-    """Plot the deterministic ODE moment trajectories, styled like show_sample_moments.
-
-    The ODE is deterministic — each moment is a single-valued curve — so no noise
-    band is drawn. Only the mean gene state, the mean mRNA count, and the gene–RNA
-    covariance are shown.
-    """
+    """Plot the ODE moment trajectories as a standalone 3-panel figure."""
     mu_G, mu_R, _, c_rg = y
 
     fig = make_subplots(
@@ -23,7 +18,7 @@ def show_ode_moments(t, y, title=None):
         vertical_spacing=0.06,
     )
 
-    # Panel (a): Gene State G (deterministic mean)
+    # Panel (a): Gene State G 
     fig.add_trace(
         go.Scatter(
             x=t,
@@ -36,7 +31,7 @@ def show_ode_moments(t, y, title=None):
         col=1,
     )
 
-    # Panel (b): RNA Count R (deterministic mean)
+    # Panel (b): RNA Count R 
     fig.add_trace(
         go.Scatter(
             x=t,
@@ -62,7 +57,6 @@ def show_ode_moments(t, y, title=None):
         col=1,
     )
 
-    # Layout — matched to show_sample_moments
     fig.update_layout(
         template="plotly_white",
         width=1100,

@@ -104,7 +104,6 @@ def show_sample_moments(moments: dict, title: str = None) -> None:
         col=1,
     )
 
-    # Layout Adjustments
     fig.update_layout(
         template="plotly_white",
         width=1100,
@@ -128,7 +127,7 @@ def show_single_trajectory(
 ):
     """Plot one raw SSA realization as a standalone 2-panel figure.
 
-    It shows the absolute values of a single trajectory selected by ``trajectory_index`` — no averaging.
+    It shows the absolute values of a single trajectory selected by trajectory_index.
 
     Args:
         raw_data (np.ndarray): (n_sim+1, n_rep, 3) array from simulate_telegraph;
@@ -176,7 +175,6 @@ def show_single_trajectory(
         col=1,
     )
 
-    # Layout — matched to show_sample_moments
     fig.update_layout(
         template="plotly_white",
         width=1100,

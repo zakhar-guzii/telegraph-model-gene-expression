@@ -2,7 +2,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-# ODE in dark blue, SSA in green — flat palette consistent with the project.
+# ODE in dark blue, SSA in green.
 ODE_COLOR = "#1E40AF"
 SSA_COLOR = "#10B981"
 SSA_FILL = "rgba(16, 185, 129, 0.10)"
@@ -39,7 +39,7 @@ def show_combined_moments(moments_ssa, t_ode, y_ode, title="SSA vs ODE Compariso
     )
 
     # --- Panel (a): Gene State G ---
-    # SSA empirical ±σ band (drawn first, sits behind the lines)
+    # SSA empirical ±σ band
     fig.add_trace(
         go.Scatter(
             x=t_ssa,
@@ -95,7 +95,7 @@ def show_combined_moments(moments_ssa, t_ode, y_ode, title="SSA vs ODE Compariso
         col=1,
     )
 
-    # --- Panel (b): RNA Count R ---
+    # Panel (b): RNA Count R 
     fig.add_trace(
         go.Scatter(
             x=t_ssa,
@@ -147,7 +147,7 @@ def show_combined_moments(moments_ssa, t_ode, y_ode, title="SSA vs ODE Compariso
         col=1,
     )
 
-    # --- Panel (c): Covariance Cov(R, G) (no band) ---
+    #  Panel (c): Covariance Cov(R, G)
     fig.add_trace(
         go.Scatter(
             x=t_ssa,
@@ -173,7 +173,6 @@ def show_combined_moments(moments_ssa, t_ode, y_ode, title="SSA vs ODE Compariso
         col=1,
     )
 
-    # Layout — matched to show_sample_moments, plus a grouped legend for toggling.
     fig.update_layout(
         template="plotly_white",
         width=1100,
