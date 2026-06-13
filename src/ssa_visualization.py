@@ -128,8 +128,7 @@ def show_single_trajectory(
 ):
     """Plot one raw SSA realization as a standalone 2-panel figure.
 
-    Unlike show_sample_moments (ensemble mean ± band), each panel shows the absolute
-    values of a single trajectory selected by ``trajectory_index`` — no averaging.
+    It shows the absolute values of a single trajectory selected by ``trajectory_index`` — no averaging.
 
     Args:
         raw_data (np.ndarray): (n_sim+1, n_rep, 3) array from simulate_telegraph;
