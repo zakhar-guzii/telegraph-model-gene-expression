@@ -22,10 +22,17 @@ def sample_steady_state(k_on, k_off, k_syn, k_deg, n_rep) -> dict:
             - "sigma_R"   : Steady-state sample standard deviation of the RNA count.
             - "cov_RG"    : Steady-state sample covariance between RNA and gene state.
     """
+    if k_deg == 0:
+        raise ValueError("Steady state is undefined for k_deg = 0 (RNA grows unbounded).")
+
     a = k_on / k_deg
     b = k_off / k_deg
 
-    x = np.random.beta(a, b, size=n_rep)
+    if k_off == 0:
+        # Gene never switches off -> always ON, so the mixing variable is fixed at 1.
+        x = np.ones(n_rep)
+    else:
+        x = np.random.beta(a, b, size=n_rep)
 
     G_samples = (np.random.random(size=n_rep) < x).astype(int)
 
