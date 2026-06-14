@@ -8,9 +8,6 @@ sampler for the exact steady-state distribution. Empirical moments from the
 stochastic simulation are compared against the deterministic moment dynamics and
 the analytical steady state to confirm that all three agree.
 
-This repository is the deliverable for Project 8 of the *Experimental
-Mathematics* course (KSE, Applied Mathematics, Spring 2026).
-
 ## Problem Formulation
 
 The telegraph model describes a single gene that switches stochastically between
@@ -60,11 +57,12 @@ providing an efficient analytical reference for the long-time limit.
 ```
 .
 ├── src/
-│   ├── ssa_simulation.py      # Gillespie SSA and cross-trajectory sample moments
-│   ├── ode_moments.py         # Closed moment ODE system and its solver
-│   ├── steady_state.py        # Exact steady-state sampler (Beta-Poisson-Bernoulli)
-│   ├── ssa_visualization.py   # Plotly figures for SSA moment dynamics
-│   └── ode_visualization.py   # Plotly figures for ODE moment dynamics
+│   ├── ssa_simulation.py            # Gillespie SSA and cross-trajectory sample moments
+│   ├── ode_moments.py              # Closed moment ODE system and its solver
+│   ├── steady_state.py             # Exact steady-state sampler (Beta-Poisson-Bernoulli)
+│   ├── ssa_visualization.py        # Plotly figures for SSA moment dynamics
+│   ├── ode_visualization.py        # Plotly figures for ODE moment dynamics
+│   └── comparison_visualization.py # Plotly overlay of SSA vs ODE moments
 └── notebooks/
     ├── ssa_parameter_exploration.ipynb  # SSA behaviour across parameter regimes
     ├── ssa_vs_ode.ipynb                 # Side-by-side SSA vs ODE comparison
@@ -79,8 +77,11 @@ providing an efficient analytical reference for the long-time limit.
   runs `n_rep` independent Gillespie trajectories of `n_sim` reaction events
   each. Returns a `(n_sim + 1, n_rep, 3)` array of time, gene state, and RNA
   count.
-- `compute_sample_moments(data)` — computes cross-trajectory mean, standard
-  deviation, and covariance of `G` and `R` at each recorded step.
+- `compute_sample_moments(data, t_end=None, n_grid=1000, time_step=None)` —
+  resamples every trajectory onto a shared uniform real-time grid via zero-order
+  hold (each Gillespie step lands at a different wall-clock time, so the raw event
+  index is not a common time axis), then computes the cross-trajectory mean,
+  standard deviation, and covariance of `G` and `R` at each grid time.
 
 ### `src/ode_moments.py`
 
@@ -92,30 +93,38 @@ providing an efficient analytical reference for the long-time limit.
 
 - `sample_steady_state(k_on, k_off, k_syn, k_deg, n_rep)` — draws independent
   samples from the exact steady-state distribution and returns the samples
-  together with their empirical moments.
+  together with their empirical moments. Edge cases are handled explicitly:
+  `k_off = 0` gives a constitutive gene (`R ~ Poisson(k_syn / k_deg)`), while
+  `k_deg = 0` has no steady state and raises a `ValueError`.
 
-### `src/ssa_visualization.py`, `src/ode_visualization.py`
+### `src/ssa_visualization.py`, `src/ode_visualization.py`, `src/comparison_visualization.py`
 
-- `show_sample_moments(moments, title)` and
-  `show_ode_moments(t, y, title, analytical)` — render three-panel Plotly
-  figures showing the mean gene activity, mean mRNA count with fluctuation
-  bands, and the gene-RNA covariance.
+- `show_sample_moments(moments, title=None)` — three-panel SSA figure: mean gene
+  activity, mean mRNA count, and gene-RNA covariance, with ±σ fluctuation bands on
+  the gene and mRNA panels. `show_single_trajectory(data, ...)` plots one raw
+  realization.
+- `show_ode_moments(t, y, title=None)` — three-panel ODE figure showing the same
+  three moments as deterministic mean curves (no fluctuation bands).
+- `show_combined_moments(moments_ssa, t_ode, y_ode, title=...)` — overlays the SSA
+  estimates (with their ±σ band) and the ODE mean curves on one three-panel figure;
+  used by `ssa_vs_ode.ipynb`.
 
 ## Notebooks
 
 - **`ssa_parameter_exploration.ipynb`** — studies how the SSA moments respond to
-  the switching regime (slow vs. fast promoter switching), the expression level
-  (`k_syn / k_deg`), the initial conditions, and the numerical parameters
-  (ensemble size and run length).
+  the switching regime (slow vs. fast promoter switching, relative to `k_deg`), the
+  expression level (burst size `k_syn / k_off`), the initial conditions, and the
+  numerical parameters (ensemble size and run length).
 - **`ssa_vs_ode.ipynb`** — overlays the stochastic SSA estimates and the
   deterministic ODE moments for matched parameter sets, confirming that the SSA
   means converge to the exact moment dynamics.
-- **`validation.ipynb`** — three validation checks: (1) convergence of the
-  steady-state sampler to the ODE prediction as the sample size grows, with the
-  expected `1/sqrt(N)` error decay; (2) agreement of the sampler with the settled
-  ODE steady state across parameter regimes; (3) analytical edge cases
-  (constitutive expression with `k_off = 0`, giving Poisson statistics; and no
-  degradation with `k_deg = 0`, giving linear mRNA growth).
+- **`validation.ipynb`** — validates `sample_steady_state` with three checks
+  (each prints its computed values for inspection): (1) convergence of the sampler
+  moments to the ODE steady state as `n_rep` grows, with the expected `1/sqrt(N)`
+  error decay; (2) agreement of the sampler moments with the closed-form analytical
+  steady-state moments; (3) edge cases — `k_off = 0` (constitutive gene, giving
+  `R ~ Poisson(k_syn / k_deg)`) and `k_deg = 0` (no steady state, so the sampler
+  raises a `ValueError`).
 
 ## Requirements
 

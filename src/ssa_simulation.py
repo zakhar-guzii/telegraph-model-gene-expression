@@ -40,6 +40,13 @@ def simulate_telegraph(
             a4 = k_deg * r
             a0 = a1 + a2 + a3 + a4
 
+            if a0 == 0:
+                # Absorbing state: no reaction can fire — hold the final state for the rest.
+                data[i:, j, 0] = t
+                data[i:, j, 1] = g
+                data[i:, j, 2] = r
+                break
+
             r1 = np.random.uniform(0, 1)
             r2 = np.random.uniform(0, 1)
 
