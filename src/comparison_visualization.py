@@ -39,7 +39,6 @@ def show_combined_moments(moments_ssa, t_ode, y_ode, title="SSA vs ODE Compariso
     )
 
     # --- Panel (a): Gene State G ---
-    # SSA empirical ±σ band
     fig.add_trace(
         go.Scatter(
             x=t_ssa,
@@ -66,7 +65,7 @@ def show_combined_moments(moments_ssa, t_ode, y_ode, title="SSA vs ODE Compariso
         row=1,
         col=1,
     )
-    # SSA mean — carries the single "SSA" legend entry
+
     fig.add_trace(
         go.Scatter(
             x=t_ssa,
@@ -80,7 +79,7 @@ def show_combined_moments(moments_ssa, t_ode, y_ode, title="SSA vs ODE Compariso
         row=1,
         col=1,
     )
-    # ODE mean — carries the single "ODE" legend entry
+    
     fig.add_trace(
         go.Scatter(
             x=t_ode,
