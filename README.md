@@ -14,8 +14,8 @@ The telegraph model describes a single gene that switches stochastically between
 an inactive (OFF) and an active (ON) state and transcribes mRNA only while
 active. The system is defined by four reactions:
 
-| Reaction            | Effect              | Propensity        |
-| ------------------- | ------------------- | ----------------- |
+| Reaction            | Effect              | Reaction intensity |
+| ------------------- | ------------------- | ------------------ |
 | Gene activation     | OFF -> ON           | `k_on * (1 - G)`  |
 | Gene inactivation   | ON -> OFF           | `k_off * G`       |
 | RNA synthesis       | R -> R + 1 (ON only)| `k_syn * G`       |
@@ -57,16 +57,21 @@ providing an efficient analytical reference for the long-time limit.
 ```
 .
 ├── src/
-│   ├── ssa_simulation.py            # Gillespie SSA and cross-trajectory sample moments
+│   ├── ssa_simulation.py           # Gillespie SSA and cross-trajectory sample moments
 │   ├── ode_moments.py              # Closed moment ODE system and its solver
 │   ├── steady_state.py             # Exact steady-state sampler (Beta-Poisson-Bernoulli)
 │   ├── ssa_visualization.py        # Plotly figures for SSA moment dynamics
 │   ├── ode_visualization.py        # Plotly figures for ODE moment dynamics
 │   └── comparison_visualization.py # Plotly overlay of SSA vs ODE moments
-└── notebooks/
-    ├── ssa_parameter_exploration.ipynb  # SSA behaviour across parameter regimes
-    ├── ssa_vs_ode.ipynb                 # Side-by-side SSA vs ODE comparison
-    └── validation.ipynb                 # Convergence, steady-state, and edge-case checks
+├── notebooks/
+│   ├── ssa_parameter_exploration.ipynb  # SSA behaviour across parameter regimes
+│   ├── ssa_vs_ode.ipynb                 # Side-by-side SSA vs ODE comparison
+│   └── validation.ipynb                 # Convergence, steady-state, and edge-case checks
+└── paper/
+    ├── make_figures.py             # Regenerates the PNG figures used in the paper
+    ├── main.tex                    # LaTeX manuscript
+    ├── main.pdf                    # Compiled manuscript
+    └── figures/                    # Generated figures included by main.tex
 ```
 
 ## Modules
@@ -106,8 +111,15 @@ providing an efficient analytical reference for the long-time limit.
 - `show_ode_moments(t, y, title=None)` — three-panel ODE figure showing the same
   three moments as deterministic mean curves (no fluctuation bands).
 - `show_combined_moments(moments_ssa, t_ode, y_ode, title=...)` — overlays the SSA
-  estimates (with their ±σ band) and the ODE mean curves on one three-panel figure;
-  used by `ssa_vs_ode.ipynb`.
+  estimates (with their ±σ band), the ODE mean curves, and the analytical ODE
+  `mu_R ± sigma_R` lines on one three-panel figure; used by `ssa_vs_ode.ipynb`.
+
+### `paper/make_figures.py`
+
+- Standalone script that renders every PNG in `paper/figures/` used by the
+  manuscript (SSA, ODE, overlay, single-cell trajectory, steady-state convergence,
+  parameter-exploration, and edge-case figures). Run it with
+  `python paper/make_figures.py`.
 
 ## Notebooks
 

@@ -1,11 +1,13 @@
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-# ODE in dark blue, SSA in green.
+# ODE in dark blue, SSA in green, analytical +/-sigma_R in amber.
 ODE_COLOR = "#1E40AF"
 SSA_COLOR = "#10B981"
 SSA_FILL = "rgba(16, 185, 129, 0.10)"
+SIGMA_COLOR = "#F59E0B"
 
 
 def show_combined_moments(moments_ssa, t_ode, y_ode, title="SSA vs ODE Comparison"):
@@ -24,7 +26,8 @@ def show_combined_moments(moments_ssa, t_ode, y_ode, title="SSA vs ODE Compariso
         title (str): figure title.
     """
     t_ssa = moments_ssa["time"]
-    mu_G_ode, mu_R_ode, _, c_rg_ode = y_ode
+    mu_G_ode, mu_R_ode, sigma2_R_ode, c_rg_ode = y_ode
+    sigma_R_ode = np.sqrt(np.clip(sigma2_R_ode, 0.0, None))
 
     fig = make_subplots(
         rows=3,
@@ -141,6 +144,32 @@ def show_combined_moments(moments_ssa, t_ode, y_ode, title="SSA vs ODE Compariso
             legendgroup="ode",
             showlegend=False,
             hovertemplate="ODE ⟨R⟩ = %{y:.1f}<extra></extra>",
+        ),
+        row=2,
+        col=1,
+    )
+    # Analytical ODE mu_R +/- sigma_R overlaid on the stochastic band.
+    fig.add_trace(
+        go.Scatter(
+            x=t_ode,
+            y=mu_R_ode + sigma_R_ode,
+            line=dict(color=SIGMA_COLOR, width=1.8, dash="dot"),
+            name="ODE μ_R ± σ_R",
+            legendgroup="ode",
+            showlegend=True,
+            hoverinfo="skip",
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=t_ode,
+            y=mu_R_ode - sigma_R_ode,
+            line=dict(color=SIGMA_COLOR, width=1.8, dash="dot"),
+            legendgroup="ode",
+            showlegend=False,
+            hoverinfo="skip",
         ),
         row=2,
         col=1,

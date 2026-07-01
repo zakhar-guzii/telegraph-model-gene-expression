@@ -108,12 +108,12 @@ The state of the system at time $t$ is the pair
   \big(G(t),\,R(t)\big), \qquad G(t)\in\{0,1\}, \quad R(t)\in\mathbb{N},
 \end{equation}
 where the binary variable $G$ records whether the gene is OFF ($G=0$) or ON
-($G=1$), and the integer $R$ counts the number of mRNA molecules present. Four basic reactions define the dynamics of the system. Each reaction has a propensity $a_j$, which is the rate at which it happens at any given moment:
+($G=1$), and the integer $R$ counts the number of mRNA molecules present. Four basic reactions define the dynamics of the system. Each reaction has a reaction intensity $a_j$, which is the rate at which it happens at any given moment:
 
 \begin{center}
 \begin{tabular}{llll}
 \toprule
-\textbf{Reaction} & \textbf{Description} & \textbf{Effect} & \textbf{Propensity} \\
+\textbf{Reaction} & \textbf{Description} & \textbf{Effect} & \textbf{Reaction intensity} \\
 \midrule
 $R_1$ & Gene activation   & $G:0\to1$       & $a_1 = \kon\,(1-G)$ \\
 $R_2$ & Gene inactivation & $G:1\to0$       & $a_2 = \koff\,G$ \\
@@ -125,7 +125,7 @@ $R_4$ & RNA degradation   & $R\to R-1$      & $a_4 = \kdeg\,R$ \\
 
 The four rate constants are all positive. The switching rates $\kon$ and $\koff$
 control how quickly the promoter turns on and off; their ratio sets the long-run fraction of time the gene is active. The synthesis rate $\ksyn$ is the rate at
-which mRNA is produced while the gene is ON; the factor $G$ sets transcription to zero when $G=0$. The degradation rate $\kdeg$ is the per-molecule decay rate, so the total degradation propensity $\kdeg R$ is proportional to the amount of mRNA present. Together, the rates $(\kon,\koff,\ksyn,\kdeg)$ and an initial condition
+which mRNA is produced while the gene is ON; the factor $G$ sets transcription to zero when $G=0$. The degradation rate $\kdeg$ is the per-molecule decay rate, so the total degradation intensity $\kdeg R$ is proportional to the amount of mRNA present. Together, the rates $(\kon,\koff,\ksyn,\kdeg)$ and an initial condition
 $(g_0,r_0)$ at time $t_0$ fully determine the law of the process.
 
 The waiting time before each reaction is exponentially distributed and depends only
@@ -318,7 +318,7 @@ This is not a new model, only a convenient way to build the same Beta--Poisson s
 Beta-distributed mixing fraction, a Bernoulli gene state, and a Poisson mRNA count. The Bernoulli
 and Poisson pieces are easiest to see in the slow-switching limit. As the switching rates become
 small compared with degradation ($a,b\to0$), the $\mathrm{Beta}(a,b)$ density piles its mass at the
-two endpoints $p=0$ and $p=1$ and collapses onto a two-point (Bernoulli) distribution: over one
+two endpoints $p=0$ and $p=1$. It then collapses onto a two-point (Bernoulli) distribution: over one
 mRNA lifetime a cell is either fully OFF ($p=0$) or fully ON ($p=1$), with
 $\Pr(p=1)=a/(a+b)=\kon/(\kon+\koff)$. The mixture then separates into its building blocks---a single
 Bernoulli trial for the gene state, and, when ON, an ordinary $\mathrm{Poisson}(\ksyn/\kdeg)$ for the
@@ -436,7 +436,7 @@ and OFF, mRNA is made in bursts while it is ON, and each burst then decays away.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth]{single_cell_trajectory.png}
-  \caption{One stochastic realization (``the life of a single gene''). Top: the gene state switches
+  \caption{One stochastic run, i.e.\ a single sample path (``the life of a single gene''). Top: the gene state switches
     between OFF and ON at random times. Bottom: the mRNA count rises in bursts during ON periods and
     decays between them. Averaging many such trajectories gives the sample moments used below.}
   \label{fig:single-cell}
@@ -464,12 +464,11 @@ and OFF, mRNA is made in bursts while it is ON, and each burst then decays away.
 \end{table}
 
 \paragraph{Figures.}
-Switching speed (Figure~\ref{fig:wf-switch}) is set by how $\kon,\koff$ compare with $\kdeg$: slow
-switching ($\kon=\koff=0.05$) gives long transcriptional bursts, a wide $\pm\sigma_R$ band and a
-strong gene--RNA covariance, while fast switching ($\kon=\koff=10$) flickers so quickly that the
-promoter averages out, leaving a narrow band and near-zero covariance. Expression level
+Switching speed (Figure~\ref{fig:wf-switch}) is set by how $\kon,\koff$ compare with $\kdeg$; it
+reshapes the noise while the mean stays fixed, from long bursts and a wide band at slow switching
+to a narrow band at fast switching (details in the figure caption). Expression level
 (Figure~\ref{fig:wf-expr}) is set by the burst size $\ksyn/\koff$ at fixed $\kon$: a strong
-TATA$+$Inr-like promoter (burst $\approx14$) reaches a high mean, a weak TATA-less-like one
+promoter (burst $\approx14$) reaches a high mean, a weak promoter
 (burst $\approx3$) makes few molecules with large relative noise. Figure~\ref{fig:wf-init} runs the
 same rates from two very different starts, and Figure~\ref{fig:wf-numeric} varies only the numerical
 resolution.
@@ -493,8 +492,8 @@ resolution.
   \hfill
   \includegraphics[width=0.49\textwidth]{param_expr_low.png}
   \caption{Expression level is set by burst size $\ksyn/\koff$. A strong
-    TATA$+$Inr-like promoter (left, burst $\approx14$) reaches a high mean mRNA
-    level; a weak TATA-less-like promoter (right, burst $\approx3$) yields few
+    promoter (left, burst $\approx14$) reaches a high mean mRNA
+    level; a weak promoter (right, burst $\approx3$) yields few
     molecules and large relative fluctuations.}
   \label{fig:wf-expr}
 \end{figure}
@@ -531,8 +530,8 @@ covariance equation~\eqref{eq:dCRG} predicts. Second, the mean is governed by
 $\muR^{ss}=(\ksyn/\kdeg)\,\kon/(\kon+\koff)$, so with $\kon$ fixed the burst size $\ksyn/\koff$ sets
 how high $\muR$ climbs; low expression has a larger \emph{relative} spread (coefficient of variation
 $\sigma_R/\muR$), which is why rare-molecule genes look noisier. Third, both initial conditions
-relax to the same fixed point, confirming that the chain is ergodic (it forgets where it started),
-while the numerical run shows the estimate---not the biology---improving: the sampling error scales
+relax to the same fixed point, confirming that the chain is ergodic (it forgets where it started).
+The numerical run then shows the estimate---not the biology---improving: the sampling error scales
 as $1/\sqrt{N_{\mathrm{rep}}}$, with extra bias if runs are too short to reach stationarity. Here
 $N_{\mathrm{rep}}=224$ is a representative experiment-scale ensemble, of the order of the cell counts
 in single-molecule mRNA studies~\cite{raj2006}.
@@ -594,20 +593,25 @@ throughout.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.9\textwidth]{ssa_vs_ode.png}
-  \caption{Comparison of the SSA ensemble averages (with $\pm\sigma$ fluctuation
-    bands) and the deterministic ODE solutions. The SSA results closely match the
-    ODE predictions, validating the stochastic simulation against the exact moment
-    dynamics.}
+  \caption{Comparison of the SSA ensemble averages (green, with the empirical
+    $\pm\sigma$ fluctuation bands shaded) and the deterministic ODE solutions
+    (dashed blue). In the mRNA panel the analytical spread from the moment ODEs,
+    $\muR\pm\sigma_R$, is drawn as amber dotted lines on top of the SSA band, so the
+    stochastic scatter can be checked directly against the exact variance dynamics.
+    The SSA results closely match the ODE predictions, validating the stochastic
+    simulation against the exact moment dynamics.}
   \label{fig:ssa_vs_ode}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth]{ssaode_slow.png}
-  \caption{SSA versus moment ODEs in the high-noise slow-switching regime. Even
-    where fluctuations are largest, the SSA ensemble averages track the
-    deterministic ODE curves throughout the transient and into steady state,
-    confirming Edge~1 beyond the symmetric reference case.}
+  \caption{SSA versus moment ODEs in the high-noise slow-switching regime. Colours
+    are as in Figure~\ref{fig:ssa_vs_ode}: green SSA means with shaded $\pm\sigma$
+    bands, dashed blue ODE means, and the amber dotted analytical $\muR\pm\sigma_R$
+    overlay in the mRNA panel. Even where fluctuations are largest, the SSA ensemble
+    averages track the deterministic ODE curves throughout the transient and into
+    steady state, confirming Edge~1 beyond the symmetric reference case.}
   \label{fig:wf-ssaode}
 \end{figure}
 
@@ -681,7 +685,7 @@ $0.0145$ at $N_{\mathrm{rep}}=10^5$.
 \end{table}
 
 Finally, we test two limits where the model reduces to a known result. When the gene
-never switches off ($\koff=0$), it is constitutively active and the telegraph model
+never switches off ($\koff=0$), it is permanently active and the telegraph model
 reduces to a birth--death process---a Markov chain whose only moves are $+1$ and
 $-1$---whose stationary law is a Poisson distribution; the moment ODEs accordingly
 relax to $\muG^{ss}=1$, $\muR^{ss}=\ksyn/\kdeg$. Figure~\ref{fig:wf-poisson} overlays
@@ -694,7 +698,7 @@ detects this and raises a \texttt{ValueError} instead of returning an invalid re
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.7\textwidth]{validation_poisson.png}
-  \caption{Edge case $\koff=0$ (constitutively active gene). The sampled
+  \caption{Edge case $\koff=0$ (permanently active gene). The sampled
     steady-state mRNA distribution matches the analytic Poisson PMF with mean
     $\ksyn/\kdeg=10$ (Fano factor $\approx1$), the exact limit the telegraph model
     must reduce to when the gene never switches off.}
@@ -823,7 +827,7 @@ Journal of Physical Chemistry \textbf{81} (1977), no.~25, 2340--2361.
 D.~T.~Gillespie,
 \textit{Stochastic simulation of chemical kinetics},
 Annual Review of Physical Chemistry \textbf{58} (2007), no.~1, 35--55.
-Available at \url{https://pmc.ncbi.nlm.nih.gov/articles/PMC7610481/}.
+Open-access copy: \href{https://pmc.ncbi.nlm.nih.gov/articles/PMC7610481/}{PMC7610481}.
 \textit{(Review of exact and approximate stochastic simulation algorithms for
 chemical reaction systems; background for the SSA used here.)}
 
