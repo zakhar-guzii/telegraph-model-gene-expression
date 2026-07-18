@@ -58,7 +58,8 @@ contribution is the cross-validation that links the three methods. The code is a
 
 \section{Introduction}
 
-A surprising fact of molecular biology is that gene expression is variable. Two cells with the same DNA, grown together in the same environment, can have different numbers of copies of the same mRNA or protein. This difference between cells is called phenotypic noise. It happens naturally because of random molecular interactions.
+A surprising fact of molecular biology is that gene expression is variable. Two cells with the same DNA, grown together in the same environment, can have different numbers of copies of the same mRNA or protein. This difference between cells is called phenotypic noise. It happens naturally because of random molecular interactions. Inside a cell the key
+players---a single copy of the gene, a handful of
 transcription factors (regulatory proteins that bind DNA and control gene activity),
 a few dozen mRNA molecules---are present in such small numbers that the discreteness
 and randomness of individual chemical events cannot be averaged away. The promoter
@@ -76,12 +77,10 @@ simplicity, it reproduces the bursty, \emph{over-dispersed} mRNA distributions s
 in single-molecule experiments, which count individual mRNAs inside single
 cells~\cite{raj2006}, and it can be analysed exactly~\cite{peccoud1995}. A
 convenient way to measure this spread is the \emph{Fano factor} $F=\sigma^2/\mu$,
-the ratio of the variance to the mean of the mRNA count. A pure Poisson
-process---the simplest picture of random production and decay, in which each event
-is independent---has variance equal to mean, so $F=1$; we call this the
-\emph{Poisson baseline}. ``Over-dispersed'' means $F>1$: the random switching of the
-gene adds extra variability on top of this baseline, so the mRNA counts are more
-spread out than a Poisson distribution with the same mean.
+the ratio of the variance to the mean of the mRNA count. Pure Poisson production and
+decay, in which every event is independent, has variance equal to mean, giving the
+\emph{Poisson baseline} $F=1$. ``Over-dispersed'' means $F>1$: the random switching of
+the gene adds extra variability on top of that baseline.
 
 We treat the telegraph model as a case study in how a stochastic process can be
 described from several mathematically distinct viewpoints. We implement three
@@ -122,16 +121,19 @@ $R_4$ & RNA degradation   & $R\to R-1$      & $a_4 = \kdeg\,R$ \\
 \end{tabular}
 \end{center}
 
-The four rate constants are all positive. The switching rates $\kon$ and $\koff$
-control how quickly the promoter turns on and off; their ratio sets the long-run fraction of time the gene is active. The synthesis rate $\ksyn$ is the rate at
-which mRNA is produced while the gene is ON; the factor $G$ sets transcription to zero when $G=0$. The degradation rate $\kdeg$ is the per-molecule decay rate, so the total degradation intensity $\kdeg R$ is proportional to the amount of mRNA present. Together, the rates $(\kon,\koff,\ksyn,\kdeg)$ and an initial condition
-$(g_0,r_0)$ at time $t_0$ fully determine the law of the process.
+All four rate constants are positive. The switching rates $\kon,\koff$ set how quickly
+the promoter turns on and off, and their ratio fixes the long-run fraction of time the
+gene is active; the factor $G$ in $a_3$ shuts transcription off entirely when the gene
+is OFF; and $\kdeg$ is a per-molecule decay rate, so the total degradation intensity
+$\kdeg R$ grows with the amount of mRNA present. Together the rates
+$(\kon,\koff,\ksyn,\kdeg)$ and an initial condition $(g_0,r_0)$ at time $t_0$ fully
+determine the law of the process.
 
-The waiting time before each reaction is exponentially distributed and depends only
-on the current state, so $(G(t),R(t))$ is a continuous-time Markov chain (CTMC): a
-process that jumps between discrete states, where the next state depends only on the
-present one. Its probability distribution $P_t(g,r)=\Pr\{G(t)=g,\,R(t)=r\}$ evolves
-according to the chemical master equation~\cite{wilkinson,ingalls}
+Because each waiting time is exponential and depends only on the current state,
+$(G(t),R(t))$ is a continuous-time Markov chain (CTMC): a process that jumps between
+discrete states, with the next state depending only on the present one. Its
+distribution $P_t(g,r)=\Pr\{G(t)=g,\,R(t)=r\}$ evolves according to the chemical
+master equation~\cite{wilkinson,ingalls}
 \begin{equation}
 \label{eq:master}
 \begin{aligned}
@@ -147,44 +149,31 @@ with the convention $P_t(g,-1)=0$. Equation~\eqref{eq:master} underlies all thre
 \section{Methods}
 \label{sec:methods}
 
- The SSA produces individual random trajectories; averaging many of them estimates the moments. The moment ODEs compute those same moments directly and without sampling noise. The steady-state sampler produces the distribution the first two settle into as $t\to\infty$.  
+We describe the three implementations in turn, then state in
+Section~\ref{sec:intersection} the exact relationships that let them test one another.
 
 \subsection{Stochastic Simulation (Gillespie SSA)}
 \label{sec:ssa}
 
-The most direct way to study a stochastic process is to simulate sample paths of
-it. The \emph{stochastic simulation algorithm} (SSA), introduced by
-Gillespie~\cite{gillespie1976,gillespie1977} and reviewed
-in~\cite{gillespie2007}, generates statistically exact sample paths of a CTMC. It
-is exact in the sense that it makes no approximation to the master
-equation~\eqref{eq:master}. The key idea is that, given the current state, two
-questions can be answered separately: when does the next reaction occur, and which
-reaction is it?
+The \emph{stochastic simulation algorithm} (SSA) of
+Gillespie~\cite{gillespie1976,gillespie1977,gillespie2007} generates statistically
+exact sample paths of a CTMC, making no approximation to the master
+equation~\eqref{eq:master}. Its key idea is that, given the current state, two
+questions separate: when does the next reaction occur, and which reaction is it?
+With $a_0=\sum_{j=1}^{4} a_j$ the \emph{total reaction intensity}, the waiting time is
+$\tau\sim\mathrm{Exp}(a_0)$ and reaction $j$ fires with probability $a_j/a_0$.
 
-Let $M=4$ be the number of reactions and let
-$a_0 = \sum_{j=1}^{M} a_j$ be the \emph{total reaction intensity}, i.e.\ the combined rate
-at which any reaction happens in the current state. Then:
-\begin{itemize}
-  \item the waiting time $\tau$ until the next event is exponentially
-    distributed, $\tau \sim \mathrm{Exp}(a_0)$, with mean $1/a_0$. Intuitively,
-    the larger $a_0$, the sooner the next event occurs.
-  \item the reaction that fires is reaction $j$ with probability proportional to
-    its reaction intensity,
-    \begin{equation}
-      \Pr(j) = \frac{a_j}{a_0}.
-    \end{equation}
-    In words: a faster reaction is more likely to be the one that happens next,
-    in exact proportion to its share of the total rate.
-\end{itemize}
-
-In practice each step draws two independent uniform random numbers
-$r_1,r_2\sim\mathrm{U}(0,1)$ on $[0,1]$ and sets
+Our implementation draws these by inversion, using two independent uniforms
+$r_1,r_2\sim\mathrm{U}(0,1)$ per step:
 \begin{equation}
   \tau = \frac{1}{a_0}\,\ln\!\frac{1}{r_1},
   \qquad
   j = \min\Big\{ k : \textstyle\sum_{i=1}^{k} a_i > r_2\,a_0 \Big\}.
 \end{equation}
-These two expressions apply the rules above by inversion sampling. The first turns a uniform draw into an exponential waiting time. The second selects a reaction by summing the reaction intensities in order until the partial sum first exceeds the fraction $r_2 a_0$ of the total, so reaction $j$ is chosen with probability $a_j/a_0$. The time is then advanced by $\tau$, the state is updated by reaction $j$, the reaction intensities are recomputed, and the loop repeats for a fixed number of events $n_{\mathrm{sim}}$. If the total reaction intensity reaches $a_0=0$, no reaction can fire, so the state is absorbing and is held fixed afterwards.
+The time is then advanced by $\tau$, the state updated by reaction $j$, the reaction
+intensities recomputed, and the loop repeats for a fixed number of events
+$n_{\mathrm{sim}}$. If the total reaction intensity reaches $a_0=0$, no reaction can
+fire, so the state is absorbing and is held fixed afterwards.
 
 A single trajectory is the history of one cell. To obtain population statistics, we run $N_{\mathrm{rep}}$ independent trajectories with identical parameters and
 average over them. Each trajectory advances by its own random time increments, so the same event index occurs at different times in different trajectories. We therefore resample every trajectory onto a shared uniform time grid by a zero-order hold before averaging; the state is piecewise constant between events, so this introduces no error. The empirical moments are then ensemble averages at each grid time, for example
@@ -205,62 +194,27 @@ The SSA describes individual cells. Often we instead want deterministic equation
 $\sigRsq=\E[R^2]-\E[R]^2$ measures the spread (the noise), and the covariance
 $\CRG=\E[RG]-\E[R]\E[G]$ measures how gene activity and mRNA level vary together.
 
-Let $f(G,R)$ be any function of the state (an \emph{observable}); for example, $f=R$ gives the
-mean and $f=R^2$ gives the second moment. The master equation~\eqref{eq:master} implies one rule
-for how the average of any such $f$ changes over time:
-\begin{equation}
-\label{eq:moment-rule}
-  \frac{\mathrm{d}}{\mathrm{d}t}\,\E\big[f(G,R)\big]
-  = \E\!\left[\sum_{j=1}^{M} a_j(G,R)\,\big(f(G+\Delta G_j,\,R+\Delta R_j) - f(G,R)\big)\right],
-\end{equation}
-where $(\Delta G_j,\Delta R_j)$ is the change reaction $j$ makes to the state $(G,R)$, and
-$\E[\cdot]$ is the expectation over the process. In words, the expected rate of change of $f$ is a
-sum over the reactions: each reaction's intensity times the change it makes in $f$. The derivation
-is given in Appendix~\ref{app:moments}. We now use this rule with different choices of $f$ to get
-one equation for each moment.
-
-\paragraph{Means.}
-Taking $f=G$, only the switching reactions $R_1$ ($\Delta G=+1$) and $R_2$ ($\Delta G=-1$) change
-the gene state, so only they contribute:
-\begin{equation}
+Applying the standard moment rule for a chemical master equation---the expected rate of
+change of any observable is the sum over reactions of each intensity times the change it
+makes---to $f=G,R,R^2,GR$ in turn yields four coupled equations for the telegraph
+model~\cite{ingalls,wilkinson}:
+\begin{align}
 \label{eq:dmuG}
-  \frac{\mathrm{d}\muG}{\mathrm{d}t}
-  = \kon\,(1-\muG) - \koff\,\muG .
-\end{equation}
-Activation pushes the mean activity up toward $1$ at rate $\kon$, acting on the inactive fraction
-$1-\muG$; inactivation pulls it down toward $0$ at rate $\koff$, acting on the active fraction
-$\muG$. Taking $f=R$, only synthesis ($\Delta R=+1$, reaction intensity $\ksyn G$) and degradation
-($\Delta R=-1$, reaction intensity $\kdeg R$) contribute:
-\begin{equation}
+  \frac{\mathrm{d}\muG}{\mathrm{d}t} &= \kon\,(1-\muG) - \koff\,\muG , \\
 \label{eq:dmuR}
-  \frac{\mathrm{d}\muR}{\mathrm{d}t}
-  = \ksyn\,\muG - \kdeg\,\muR .
-\end{equation}
-So mRNA is made in proportion to the active fraction $\muG$ and removed in proportion to the amount
-present, $\muR$.
-
-\paragraph{Variance of mRNA.}
-Choosing $f=R^2$ in the same rule and rewriting the result in terms of the variance
-$\sigRsq=\E[R^2]-\muR^2$ gives
-\begin{equation}
+  \frac{\mathrm{d}\muR}{\mathrm{d}t} &= \ksyn\,\muG - \kdeg\,\muR , \\
 \label{eq:dsigR}
-  \frac{\mathrm{d}\sigRsq}{\mathrm{d}t}
-  = 2\ksyn\,\CRG - 2\kdeg\,\sigRsq + \ksyn\,\muG + \kdeg\,\muR
-\end{equation}
-(the full algebra is in Appendix~\ref{app:moments}). The mRNA variance is pushed up by the coupling
-to gene activity (the $\CRG$ term) and by the randomness of production and decay, and pushed down by
-degradation (the $-2\kdeg$ term).
-
-\paragraph{Gene--RNA covariance.}
-Choosing $f=GR$ and rewriting in terms of $\CRG=\E[GR]-\muG\muR$ gives
-\begin{equation}
+  \frac{\mathrm{d}\sigRsq}{\mathrm{d}t} &= 2\ksyn\,\CRG - 2\kdeg\,\sigRsq + \ksyn\,\muG + \kdeg\,\muR , \\
 \label{eq:dCRG}
-  \frac{\mathrm{d}\CRG}{\mathrm{d}t}
-  = \ksyn\,\sigGsq - (\kon+\koff+\kdeg)\,\CRG
-\end{equation}
-(again, see Appendix~\ref{app:moments}). The covariance is created by transcription, which passes
-the gene's own fluctuations $\sigGsq$ on to the mRNA (the $\ksyn\sigGsq$ term), and is reduced at
-the combined rate of switching and degradation.
+  \frac{\mathrm{d}\CRG}{\mathrm{d}t} &= \ksyn\,\sigGsq - (\kon+\koff+\kdeg)\,\CRG .
+\end{align}
+Each has a direct reading. Activation pushes mean activity toward $1$ and inactivation
+pulls it toward $0$; mRNA is made in proportion to the active fraction $\muG$ and removed
+in proportion to the amount present; the mRNA variance is driven up by the coupling to
+gene activity (the $\CRG$ term) and by the randomness of production and decay, and down by
+degradation; and the covariance is created by transcription passing the gene's own
+fluctuations $\sigGsq$ on to the mRNA, then damped at the combined rate of switching and
+degradation.
 
 \paragraph{Exact closure.}
 In a general nonlinear reaction system the equation for each moment depends on higher moments, so
@@ -272,11 +226,18 @@ but because $G$ is binary,
   \sigGsq = \E[G^2]-\muG^2 = \E[G]-\muG^2 = \muG\,(1-\muG),
 \end{equation}
 which depends on the mean $\muG$ alone. Putting~\eqref{eq:closure} into~\eqref{eq:dCRG} turns the
-four equations \eqref{eq:dmuG},~\eqref{eq:dmuR},~\eqref{eq:dsigR},~\eqref{eq:dCRG} into a
+four equations \eqref{eq:dmuG}--\eqref{eq:dCRG} into a
 \emph{closed, exact} linear system in $(\muG,\muR,\sigRsq,\CRG)$. This is not an approximation: the
-solutions are the true moments of the master equation~\eqref{eq:master}. We integrate them from the
-initial conditions $\muG(t_0)=g_0$, $\muR(t_0)=r_0$, $\sigRsq(t_0)=\CRG(t_0)=0$ with an explicit
-Runge--Kutta (RK45) method.
+solutions are the true moments of the master equation~\eqref{eq:master}. This exact closure is the
+one property of the system we exploit directly: it is what makes a four-variable numerical
+integration sufficient, with no closure approximation anywhere in the code.
+
+\paragraph{Implementation.}
+We do not integrate the system by hand. The four right-hand sides
+\eqref{eq:dmuG}--\eqref{eq:dCRG}, with $\sigGsq$ substituted by~\eqref{eq:closure}, are coded
+directly and passed to the explicit Runge--Kutta solver \texttt{scipy.integrate.solve\_ivp}
+(method \texttt{RK45}) from the initial conditions $\muG(t_0)=g_0$, $\muR(t_0)=r_0$,
+$\sigRsq(t_0)=\CRG(t_0)=0$, evaluated on a uniform grid of $1000$ time points.
 
 \subsection{Steady-State Sampler}
 \label{sec:ss}
@@ -309,35 +270,27 @@ $N_{\mathrm{rep}}$ samples it draws
 \end{align}
 The key point is that the mRNA count $R$ is conditioned on the mixing fraction $p$, \emph{not} on
 the current gene state $G$. Given $p$, the gene state and the mRNA count are drawn independently, so
-a cell can have $G=0$ and still $R>0$. This matches what happens in a real cell: mRNA molecules have
-a finite lifetime and usually stay in the cell for some time after the gene switches OFF, so a gene
-that is inactive right now can still hold mRNA made during its last active period.
+a cell can have $G=0$ and still $R>0$---as in a real cell, where mRNA made during the last active
+period outlives the switch to OFF.
 
-This is not a new model, only a convenient way to build the same Beta--Poisson steady state: a
-Beta-distributed mixing fraction, a Bernoulli gene state, and a Poisson mRNA count. The Bernoulli
-and Poisson pieces are easiest to see in the slow-switching limit. As the switching rates become
-small compared with degradation ($a,b\to0$), the $\mathrm{Beta}(a,b)$ density piles its mass at the
-two endpoints $p=0$ and $p=1$. It then collapses onto a two-point (Bernoulli) distribution: over one
-mRNA lifetime a cell is either fully OFF ($p=0$) or fully ON ($p=1$), with
-$\Pr(p=1)=a/(a+b)=\kon/(\kon+\koff)$. The mixture then separates into its building blocks---a single
-Bernoulli trial for the gene state, and, when ON, an ordinary $\mathrm{Poisson}(\ksyn/\kdeg)$ for the
-mRNA. This is the same reduction we check numerically at $\koff=0$ (Section~\ref{sec:res-ss}), where
-$p\equiv1$ and $R\sim\mathrm{Poisson}(\ksyn/\kdeg)$. So the Beta--Poisson framework does not hide a
-new mechanism; under these edge conditions it simply breaks down into a plain Bernoulli gene and a
-plain Poisson mRNA.
+This construction makes a sharp prediction at the edge of parameter space. As the switching rates
+become small compared with degradation ($a,b\to0$), the $\mathrm{Beta}(a,b)$ density piles its mass
+at the endpoints $p=0$ and $p=1$, and the mixture separates into its building blocks: a single
+Bernoulli trial for the gene state and, when ON, an ordinary Poisson count for the mRNA. In
+particular at $\koff=0$ the mixing fraction is degenerate, $p\equiv1$, and the stationary law must
+collapse to a plain $\mathrm{Poisson}(\ksyn/\kdeg)$. We test that prediction numerically in
+Section~\ref{sec:res-ss}.
 
-The joint stationary law is obtained by averaging these conditional distributions over the mixing
-fraction:
+The joint stationary law is the average of these conditional distributions over the mixing
+fraction,
 \begin{equation}
-  P_\infty(g,r) = \int_0^1 \Pr(G=g\mid p)\,\Pr(R=r\mid p)\,f(p)\,\mathrm{d}p .
+  P_\infty(g,r) = \int_0^1 \Pr(G=g\mid p)\,\Pr(R=r\mid p)\,f(p)\,\mathrm{d}p ,
 \end{equation}
-The integral averages over $p$: it adds up the probability of each $(g,r)$ outcome across all values
-of $p$, weighted by the density $f(p)$. Drawing $N_{\mathrm{rep}}$ triples $(p,G,R)$ and averaging
-gives unbiased Monte Carlo estimates of the steady-state moments
+which our sampler never evaluates directly: drawing $N_{\mathrm{rep}}$ triples $(p,G,R)$ and
+averaging gives unbiased Monte Carlo estimates of the steady-state moments
 $\widehat{\muG}^{\,ss},\widehat{\muR}^{\,ss}$, and so on. Two edge cases are handled explicitly. If
-$\koff=0$, the gene is always active (it never switches off), so $p\equiv1$ and
-$R\sim\mathrm{Poisson}(\ksyn/\kdeg)$. If $\kdeg=0$, no steady state exists (mRNA grows without
-bound), and the input is rejected. The exact
+$\koff=0$ the gene never switches off, so $p$ is fixed at $1$ rather than drawn; if $\kdeg=0$ no
+steady state exists (mRNA grows without bound) and the input is rejected. The exact
 stationary means used as the reference below are
 \begin{equation}
 \label{eq:ss-means}
@@ -347,27 +300,6 @@ stationary means used as the reference below are
 \end{equation}
 obtained by setting the time derivatives in~\eqref{eq:dmuG}--\eqref{eq:dmuR} to
 zero.
-
-\section{Experiments and Results}
-\label{sec:results}
-
-The study is organised into three Jupyter notebooks, one for each part of the
-validation. Notebook~1
-(\href{https://github.com/zakhar-guzii/telegraph-model-gene-expression/blob/main/notebooks/ssa_parameter_exploration.ipynb}{\texttt{ssa\_parameter\_exploration.ipynb}})
-explores the SSA on its own to build intuition; Notebook~2
-(\href{https://github.com/zakhar-guzii/telegraph-model-gene-expression/blob/main/notebooks/ssa_vs_ode.ipynb}{\texttt{ssa\_vs\_ode.ipynb}})
-tests Edge~1 by comparing the SSA with the moment ODEs; Notebook~3
-(\href{https://github.com/zakhar-guzii/telegraph-model-gene-expression/blob/main/notebooks/validation.ipynb}{\texttt{validation.ipynb}})
-tests Edges~2 and~3 by checking the steady-state sampler against closed-form
-results.
-
-Unless stated otherwise, the dynamic experiments use the symmetric parameters
-$\kon=0.5$, $\koff=0.5$, $\ksyn=20.0$, $\kdeg=1.0$ (time measured in mRNA
-lifetimes), with $N_{\mathrm{rep}}=1000$ trajectories and initial condition
-$(g_0,r_0)=(0,0)$. These give an active fraction $\muG^{ss}=\kon/(\kon+\koff)=0.5$
-and steady-state mean mRNA level $\muR^{ss}=(\ksyn/\kdeg)\,\muG^{ss}=10$,
-by~\eqref{eq:ss-means}. The five-moment sampler check in
-Section~\ref{sec:res-ss} uses $\koff=1$ instead, which gives $\muR^{ss}=6.667$.
 
 \subsection{The Validation Triangle}
 \label{sec:intersection}
@@ -421,6 +353,27 @@ An SSA trajectory run long enough to reach stationarity samples the same
 distribution $P_\infty$ as the direct sampler. Hence the long-time plateau of the
 SSA moments must agree with both the ODE fixed point and the sampler
 estimates.
+
+\section{Experiments and Results}
+\label{sec:results}
+
+The study is organised into three Jupyter notebooks, one for each part of the
+validation. Notebook~1
+(\href{https://github.com/zakhar-guzii/telegraph-model-gene-expression/blob/main/notebooks/ssa_parameter_exploration.ipynb}{\texttt{ssa\_parameter\_exploration.ipynb}})
+explores the SSA on its own to build intuition; Notebook~2
+(\href{https://github.com/zakhar-guzii/telegraph-model-gene-expression/blob/main/notebooks/ssa_vs_ode.ipynb}{\texttt{ssa\_vs\_ode.ipynb}})
+tests Edge~1 by comparing the SSA with the moment ODEs; Notebook~3
+(\href{https://github.com/zakhar-guzii/telegraph-model-gene-expression/blob/main/notebooks/validation.ipynb}{\texttt{validation.ipynb}})
+tests Edges~2 and~3 by checking the steady-state sampler against closed-form
+results.
+
+Unless stated otherwise, the dynamic experiments use the symmetric parameters
+$\kon=0.5$, $\koff=0.5$, $\ksyn=20.0$, $\kdeg=1.0$ (time measured in mRNA
+lifetimes), with $N_{\mathrm{rep}}=1000$ trajectories and initial condition
+$(g_0,r_0)=(0,0)$. These give an active fraction $\muG^{ss}=\kon/(\kon+\koff)=0.5$
+and steady-state mean mRNA level $\muR^{ss}=(\ksyn/\kdeg)\,\muG^{ss}=10$,
+by~\eqref{eq:ss-means}. The five-moment sampler check in
+Section~\ref{sec:res-ss} uses $\koff=1$ instead, which gives $\muR^{ss}=6.667$.
 
 \subsection{Parameter Exploration (Notebook 1)}
 \label{sec:res-explore}
@@ -543,51 +496,25 @@ describe the same dynamics at all times (Edge~1 of the validation triangle,
 Section~\ref{sec:intersection}). If they agree, the SSA ensemble averages should
 track the ODE curves up to sampling noise of order $1/\sqrt{N_{\mathrm{rep}}}$.
 
-Figure~\ref{fig:ssa_moments} shows the moment dynamics from the Gillespie SSA.
-Starting from a silent gene with no mRNA, the mean activity $\muG(t)$ relaxes to
-its stationary value $0.5$, the mean mRNA count $\muR(t)$ rises toward $10$, and the
-gene--RNA covariance $\CRG(t)$ rises and then plateaus. The shaded $\pm\sigma$ bands
-show the noise: the spread in mRNA count across cells is large (of order the mean),
-which is the phenotypic variability the telegraph model is designed to capture.
+\emph{Result.} The direct test is the overlay in Figure~\ref{fig:ssa_vs_ode}, which
+shows both descriptions of the same experiment on one set of axes. Starting from a
+silent gene with no mRNA, the mean activity $\muG(t)$ relaxes to its stationary value
+$0.5$, the mean mRNA count $\muR(t)$ rises toward $10$, and the gene--RNA covariance
+$\CRG(t)$ rises and then plateaus. The SSA ensemble averages (green, with $\pm\sigma$
+bands) lie on top of the deterministic ODE curves (dashed blue) in all three panels,
+throughout the transient and into the steady state. The ODE curves are smooth, being
+exact expectations rather than estimates; the only visible difference is a small wiggle
+in the SSA covariance curve, the expected finite-$N_{\mathrm{rep}}$ sampling
+fluctuation, which shrinks as more trajectories are added. The shaded bands are worth
+reading separately from the agreement: the spread in mRNA count across cells is large,
+of order the mean itself, and that is the phenotypic variability the telegraph model
+exists to capture.
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.9\textwidth]{ssa_moments.png}
-  \caption{Time evolution of ensemble-averaged moments from the Gillespie SSA.
-    (A) Mean gene activity $\mu_G(t)$ with $\pm\sigma_G$ fluctuation bands.
-    (B) Mean mRNA count $\mu_R(t)$ with $\pm\sigma_R$ fluctuation bands.
-    (C) Gene--RNA covariance $C_{RG}(t)$. Parameters: $k_{\mathrm{on}}=0.5$,
-    $k_{\mathrm{off}}=0.5$, $k_{\mathrm{syn}}=20.0$, $k_{\mathrm{deg}}=1.0$,
-    $N_{\mathrm{rep}}=1000$.}
-  \label{fig:ssa_moments}
-\end{figure}
-
-Figure~\ref{fig:ode_moments} shows the corresponding deterministic dynamics from
-the closed ODE system~\eqref{eq:dmuG}--\eqref{eq:dCRG}. The curves are smooth, since
-they are exact expectations rather than estimates, but their shapes, timescales,
-and limiting values match the stochastic results panel for panel.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.9\textwidth]{ode_moments.png}
-  \caption{Time evolution of the deterministic moment ODEs corresponding to the
-    same parameters as in Figure~\ref{fig:ssa_moments}. (A) Mean gene activity
-    $\mu_G(t)$. (B) Mean mRNA count $\mu_R(t)$. (C) Gene--RNA covariance
-    $C_{RG}(t)$.}
-  \label{fig:ode_moments}
-\end{figure}
-
-\emph{Result.} The direct test is the overlay in Figure~\ref{fig:ssa_vs_ode}. The
-SSA ensemble averages (green, with $\pm\sigma$ bands) lie on top of the
-deterministic ODE curves (dashed blue) in all three panels, throughout the
-transient and into the steady state. The only visible difference is a small wiggle
-in the SSA covariance curve; this is the expected finite-$N_{\mathrm{rep}}$ sampling
-fluctuation and shrinks as more trajectories are added. The agreement is not limited
-to this symmetric case: Notebook~2 repeats the comparison across slow and fast
-switching, high and low expression, and both initial conditions, and the SSA means
-fall on the ODE curves in every regime. Figure~\ref{fig:wf-ssaode} shows the hardest
-case, slow switching, where the noise is largest; the SSA still tracks the ODE
-throughout.
+The agreement is not limited to this symmetric case: Notebook~2 repeats the comparison
+across slow and fast switching, high and low expression, and both initial conditions,
+and the SSA means fall on the ODE curves in every regime. Figure~\ref{fig:wf-ssaode}
+shows the hardest case, slow switching, where the noise is largest; the SSA still
+tracks the ODE throughout.
 
 \begin{figure}[htbp]
   \centering
@@ -628,8 +555,8 @@ independent steady-state sampler (Edge~2), that the sampler's error decays at th
 Central Limit Theorem rate $1/\sqrt{N_{\mathrm{rep}}}$, and that both reduce
 correctly to known limits at the boundaries of parameter space (Edge cases).
 
-\emph{Result.} The ODE solutions in Figures~\ref{fig:ode_moments}
-and~\ref{fig:ssa_vs_ode} plateau at $\muG^{ss}=0.5$ and $\muR^{ss}=10$, matching the
+\emph{Result.} The ODE solutions in Figure~\ref{fig:ssa_vs_ode}
+plateau at $\muG^{ss}=0.5$ and $\muR^{ss}=10$, matching the
 analytical fixed point~\eqref{eq:ss-means}. The direct sampler reproduces these
 values: with $N_{\mathrm{rep}}=2\times10^5$ samples it returns
 $\widehat{\muG}^{\,ss}\approx0.499$ and $\widehat{\muR}^{\,ss}\approx10.02$, agreeing
@@ -683,8 +610,9 @@ $0.0145$ at $N_{\mathrm{rep}}=10^5$.
   \label{tab:moments}
 \end{table}
 
-Finally, we test two limits where the model reduces to a known result. When the gene
-never switches off ($\koff=0$), it is permanently active and the telegraph model
+Finally, we test the two limits where the model reduces to a known result, including
+the $\koff=0$ prediction made in Section~\ref{sec:ss}. When the gene
+never switches off, it is permanently active and the telegraph model
 reduces to a birth--death process---a Markov chain whose only moves are $+1$ and
 $-1$---whose stationary law is a Poisson distribution; the moment ODEs accordingly
 relax to $\muG^{ss}=1$, $\muR^{ss}=\ksyn/\kdeg$. Figure~\ref{fig:wf-poisson} overlays
@@ -752,62 +680,6 @@ example neural-network density estimators or variational approximations---give a
 approximate these high-dimensional probability distributions, learning a compact model of the
 stationary state instead of enumerating it. Combining the exact small-system checks of this paper
 with such approximate large-system methods is a promising direction.
-
-\section{Appendix}
-\label{app:moments}
-
-This appendix collects the algebra left out of Section~\ref{sec:ode}.
-
-\subsection*{A.1\quad The general moment rule}
-Write $\Delta_j=(\Delta G_j,\Delta R_j)$ for the change reaction $j$ makes to the state, and
-$a_j(x)$ for its reaction intensity, with $x=(g,r)$. The master equation~\eqref{eq:master} can be
-written compactly as
-\begin{equation}
-  \frac{\mathrm{d}}{\mathrm{d}t}P_t(x)
-  = \sum_j\big[a_j(x-\Delta_j)\,P_t(x-\Delta_j) - a_j(x)\,P_t(x)\big].
-\end{equation}
-For any observable $f$, multiply by $f(x)$ and sum over all states $x$:
-\begin{equation}
-  \frac{\mathrm{d}}{\mathrm{d}t}\E[f]
-  = \sum_x f(x)\sum_j\big[a_j(x-\Delta_j)\,P_t(x-\Delta_j) - a_j(x)\,P_t(x)\big].
-\end{equation}
-In the first term relabel the summation index $x\to x+\Delta_j$ (allowed because the sum runs over
-all states), which gives
-\begin{equation}
-  \frac{\mathrm{d}}{\mathrm{d}t}\E[f]
-  = \E\!\left[\sum_j a_j(G,R)\,\big(f(G+\Delta G_j,\,R+\Delta R_j)-f(G,R)\big)\right],
-\end{equation}
-which is Eq.~\eqref{eq:moment-rule}.
-
-\subsection*{A.2\quad Variance of the mRNA count}
-Take $f=R^2$. Only synthesis and degradation change $R$: synthesis ($R\to R+1$) changes $R^2$ by
-$(R+1)^2-R^2=2R+1$, and degradation ($R\to R-1$) changes it by $(R-1)^2-R^2=-2R+1$. The
-rule~\eqref{eq:moment-rule} then gives
-\begin{equation}
-  \frac{\mathrm{d}\,\E[R^2]}{\mathrm{d}t}
-  = 2\ksyn\,\E[GR] + \ksyn\,\muG - 2\kdeg\,\E[R^2] + \kdeg\,\muR .
-\end{equation}
-Differentiating $\sigRsq=\E[R^2]-\muR^2$ and substituting $\mathrm{d}\muR/\mathrm{d}t$
-from~\eqref{eq:dmuR},
-\begin{equation}
-  \frac{\mathrm{d}\sigRsq}{\mathrm{d}t}
-  = \frac{\mathrm{d}\,\E[R^2]}{\mathrm{d}t} - 2\muR\,(\ksyn\muG-\kdeg\muR).
-\end{equation}
-Using $\CRG=\E[GR]-\muG\muR$ and $\sigRsq=\E[R^2]-\muR^2$, the mixed terms collect as
-$2\ksyn\E[GR]-2\ksyn\muG\muR=2\ksyn\CRG$ and $-2\kdeg\E[R^2]+2\kdeg\muR^2=-2\kdeg\sigRsq$, leaving
-Eq.~\eqref{eq:dsigR}.
-
-\subsection*{A.3\quad Gene--RNA covariance}
-Take $f=GR$. The four reactions change $GR$ by $R$ (activation), $-R$ (inactivation), $G$
-(synthesis) and $-G$ (degradation), each weighted by its reaction intensity. Using $G^2=G$ (because
-$G\in\{0,1\}$),
-\begin{equation}
-  \frac{\mathrm{d}\,\E[GR]}{\mathrm{d}t}
-  = \kon\,\muR + \ksyn\,\muG - (\kon+\koff+\kdeg)\,\E[GR].
-\end{equation}
-Differentiating $\CRG=\E[GR]-\muG\muR$ and substituting the mean
-equations~\eqref{eq:dmuG}--\eqref{eq:dmuR}, the linear terms combine into Eq.~\eqref{eq:dCRG}, where
-$\sigGsq=\muG(1-\muG)$ by~\eqref{eq:closure}.
 
 \begin{thebibliography}{9}
 
