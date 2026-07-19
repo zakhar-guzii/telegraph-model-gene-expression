@@ -58,7 +58,12 @@ contribution is the cross-validation that links the three methods. The code is a
 
 \section{Introduction}
 
-A surprising fact of molecular biology is that gene expression is variable. Two cells with the same DNA, grown together in the same environment, can have different numbers of copies of the same mRNA or protein. This difference between cells is called phenotypic noise. It happens naturally because of random molecular interactions. Inside a cell the key
+A surprising fact of molecular biology is that gene expression is variable. Two cells with the same DNA, grown together in the same environment, can have different numbers of copies of the same mRNA or protein~\cite{elowitz2002,ozbudak2002}. This difference between cells is called phenotypic noise. It happens naturally because of random molecular interactions. Experimentally this variability
+separates into two parts~\cite{elowitz2002}: \emph{extrinsic} noise, caused by differences between
+cells---their size, cell-cycle stage, or the pool of available polymerases---and \emph{intrinsic}
+noise, the randomness of the transcription and degradation events themselves, which persists even
+between two identical copies of a gene inside the \emph{same} cell. The telegraph model studied here
+describes the intrinsic component. Inside a cell the key
 players---a single copy of the gene, a handful of
 transcription factors (regulatory proteins that bind DNA and control gene activity),
 a few dozen mRNA molecules---are present in such small numbers that the discreteness
@@ -72,11 +77,11 @@ deterministic quantity.
 
 The telegraph model is the simplest framework that reproduces this behaviour. It
 idealises the gene as a two-state device---like a telegraph key that is either
-pressed (ON) or released (OFF)---that produces mRNA only while ON. Despite its
+pressed (ON) or released (OFF)---that produces mRNA only while ON~\cite{ko1991}. Despite its
 simplicity, it reproduces the bursty, \emph{over-dispersed} mRNA distributions seen
 in single-molecule experiments, which count individual mRNAs inside single
 cells~\cite{raj2006}, and it can be analysed exactly~\cite{peccoud1995}. A
-convenient way to measure this spread is the \emph{Fano factor} $F=\sigma^2/\mu$,
+convenient way to measure this spread is the \emph{Fano factor} $F=\sigma^2/\mu$~\cite{fano1947},
 the ratio of the variance to the mean of the mRNA count. Pure Poisson production and
 decay, in which every event is independent, has variance equal to mean, giving the
 \emph{Poisson baseline} $F=1$. ``Over-dispersed'' means $F>1$: the random switching of
@@ -129,11 +134,24 @@ $\kdeg R$ grows with the amount of mRNA present. Together the rates
 $(\kon,\koff,\ksyn,\kdeg)$ and an initial condition $(g_0,r_0)$ at time $t_0$ fully
 determine the law of the process.
 
+\paragraph{Burst size.}
+One derived quantity is used repeatedly below and follows in a line. Once the gene is ON, the only
+reaction that can switch it off fires at the constant rate $\koff$, so the duration of an active
+period is exponential with mean $1/\koff$; during that period transcription fires at rate $\ksyn$.
+The mean number of transcripts made per active period---the \emph{burst size} $B$---is therefore
+\begin{equation}
+\label{eq:burst}
+  B = \ksyn\,\E[\text{ON duration}] = \frac{\ksyn}{\koff}.
+\end{equation}
+Bursts of this kind are observed directly in single cells~\cite{golding2005,raj2006}, and the exact
+consequences of promoter switching for the mRNA distribution, including the limits recovered in
+Section~\ref{sec:res-explore}, are worked out in~\cite{iyerbiswas2009}.
+
 Because each waiting time is exponential and depends only on the current state,
 $(G(t),R(t))$ is a continuous-time Markov chain (CTMC): a process that jumps between
 discrete states, with the next state depending only on the present one. Its
 distribution $P_t(g,r)=\Pr\{G(t)=g,\,R(t)=r\}$ evolves according to the chemical
-master equation~\cite{wilkinson,ingalls}
+master equation~\cite{vankampen,gardiner,wilkinson,ingalls}
 \begin{equation}
 \label{eq:master}
 \begin{aligned}
@@ -187,6 +205,14 @@ average over them. Each trajectory advances by its own random time increments, s
 \end{equation}
 with sample variances and the sample gene--RNA covariance defined analogously.
 
+\paragraph{Random number generation.}
+Because every result in this paper is an average over pseudo-random draws, we state the generator
+explicitly. All experiments use the Mersenne Twister MT19937~\cite{matsumoto1998} through
+\texttt{numpy.random}~\cite{harris2020}. Its period of $2^{19937}-1$ is vast compared with the
+$\mathcal{O}(10^7)$ variates consumed by the largest run reported here, so exhausting the generator
+is not a concern. A seed is fixed for each experiment, so every figure in this paper is exactly
+reproducible from the accompanying code.
+
 \subsection{Moment ODEs}
 \label{sec:ode}
 
@@ -218,7 +244,7 @@ degradation.
 
 \paragraph{Exact closure.}
 In a general nonlinear reaction system the equation for each moment depends on higher moments, so
-the system never closes and one has to add approximate closure schemes~\cite{ingalls,wilkinson}.
+the system never closes and one has to add approximate closure schemes~\cite{schnoerr2015,ingalls,wilkinson}.
 Here it closes \emph{exactly}. The only possible nonlinearity is the variance of the gene state,
 but because $G$ is binary,
 \begin{equation}
@@ -235,8 +261,8 @@ integration sufficient, with no closure approximation anywhere in the code.
 \paragraph{Implementation.}
 We do not integrate the system by hand. The four right-hand sides
 \eqref{eq:dmuG}--\eqref{eq:dCRG}, with $\sigGsq$ substituted by~\eqref{eq:closure}, are coded
-directly and passed to the explicit Runge--Kutta solver \texttt{scipy.integrate.solve\_ivp}
-(method \texttt{RK45}) from the initial conditions $\muG(t_0)=g_0$, $\muR(t_0)=r_0$,
+directly and passed to the explicit Runge--Kutta solver \texttt{scipy.integrate.solve\_ivp}~\cite{virtanen2020}
+(method \texttt{RK45}, the embedded Dormand--Prince pair~\cite{dormand1980}) from the initial conditions $\muG(t_0)=g_0$, $\muR(t_0)=r_0$,
 $\sigRsq(t_0)=\CRG(t_0)=0$, evaluated on a uniform grid of $1000$ time points.
 
 \subsection{Steady-State Sampler}
@@ -312,7 +338,7 @@ follow.
 \paragraph{Edge 1 --- SSA $\leftrightarrow$ Moment ODEs (finite time).}
 The empirical averages~\eqref{eq:ssa-mean} are sample means of independent,
 identically distributed trajectories. By the Law of Large
-Numbers~\cite{vankampen}, as $N_{\mathrm{rep}}\to\infty$ they converge to the true
+Numbers, as $N_{\mathrm{rep}}\to\infty$ they converge to the true
 expectations, which are exactly the solutions of the moment ODEs:
 \begin{equation}
   \lim_{N_{\mathrm{rep}}\to\infty}
@@ -343,7 +369,7 @@ estimate \emph{these same} values,
   \lim_{N_{\mathrm{rep}}\to\infty}
   \frac{1}{N_{\mathrm{rep}}}\sum_{i=1}^{N_{\mathrm{rep}}} R_i^{ss} = \muR^{ss}.
 \end{equation}
-By the Central Limit Theorem~\cite{gardiner}, the sampler's error decays as
+By the Central Limit Theorem, the sampler's error decays as
 $\sigma/\sqrt{N_{\mathrm{rep}}}$, where $\sigma$ is the standard deviation of the
 stationary distribution. Observing this $1/\sqrt{N_{\mathrm{rep}}}$ rate confirms
 that the sampler is a valid Monte Carlo estimator of the steady-state moments.
@@ -419,7 +445,7 @@ and OFF, mRNA is made in bursts while it is ON, and each burst then decays away.
 Switching speed (Figure~\ref{fig:wf-switch}) is set by how $\kon,\koff$ compare with $\kdeg$; it
 reshapes the noise while the mean stays fixed, from long bursts and a wide band at slow switching
 to a narrow band at fast switching (details in the figure caption). Expression level
-(Figure~\ref{fig:wf-expr}) is set by the burst size $\ksyn/\koff$ at fixed $\kon$: a strong
+(Figure~\ref{fig:wf-expr}) is set by the burst size $\ksyn/\koff$ of~\eqref{eq:burst} at fixed $\kon$: a strong
 promoter (burst $\approx14$) reaches a high mean, a weak promoter
 (burst $\approx3$) makes few molecules with large relative noise. Figure~\ref{fig:wf-init} runs the
 same rates from two very different starts, and Figure~\ref{fig:wf-numeric} varies only the numerical
@@ -478,8 +504,9 @@ resolution.
 Three mathematical points come out of these runs. First, switching speed reshapes the noise at a
 fixed mean: as $\kon,\koff$ grow relative to $\kdeg$ the gene averages out, so $\sigRsq$ and $\CRG$
 fall and the Fano factor $F=\sigRsq/\muR$ moves toward the Poisson baseline $F=1$, exactly as the
-covariance equation~\eqref{eq:dCRG} predicts. Second, the mean is governed by
-$\muR^{ss}=(\ksyn/\kdeg)\,\kon/(\kon+\koff)$, so with $\kon$ fixed the burst size $\ksyn/\koff$ sets
+covariance equation~\eqref{eq:dCRG} predicts and in agreement with the exact analysis of the
+switching limits in~\cite{iyerbiswas2009}. Second, the mean is governed by
+$\muR^{ss}=(\ksyn/\kdeg)\,\kon/(\kon+\koff)$, so with $\kon$ fixed the burst size~\eqref{eq:burst} sets
 how high $\muR$ climbs; low expression has a larger \emph{relative} spread (coefficient of variation
 $\sigma_R/\muR$), which is why rare-molecule genes look noisier. Third, both initial conditions
 relax to the same fixed point, confirming that the chain is ergodic (it forgets where it started).
@@ -614,7 +641,7 @@ Finally, we test the two limits where the model reduces to a known result, inclu
 the $\koff=0$ prediction made in Section~\ref{sec:ss}. When the gene
 never switches off, it is permanently active and the telegraph model
 reduces to a birth--death process---a Markov chain whose only moves are $+1$ and
-$-1$---whose stationary law is a Poisson distribution; the moment ODEs accordingly
+$-1$---whose stationary law is a Poisson distribution~\cite{vankampen,gardiner}; the moment ODEs accordingly
 relax to $\muG^{ss}=1$, $\muR^{ss}=\ksyn/\kdeg$. Figure~\ref{fig:wf-poisson} overlays
 the sampled counts on the analytic Poisson PMF; they coincide, with $\muR\approx9.99$
 and a Fano factor (the variance-to-mean ratio) $\approx0.99$, against the expected
@@ -716,6 +743,55 @@ PLoS Biology \textbf{4} (2006), no.~10, e309.
 \textit{(Single-molecule mRNA counts showing bursty, over-dispersed expression
 consistent with the telegraph model.)}
 
+\bibitem{elowitz2002}
+M.~B.~Elowitz, A.~J.~Levine, E.~D.~Siggia, and P.~S.~Swain,
+\textit{Stochastic gene expression in a single cell},
+Science \textbf{297} (2002), no.~5584, 1183--1186.
+\textit{(Separates intrinsic from extrinsic noise in single cells; source for the
+noise decomposition stated in the Introduction.)}
+
+\bibitem{ozbudak2002}
+E.~M.~Ozbudak, M.~Thattai, I.~Kurtser, A.~D.~Grossman, and A.~van Oudenaarden,
+\textit{Regulation of noise in the expression of a single gene},
+Nature Genetics \textbf{31} (2002), no.~1, 69--73.
+\textit{(Measures how transcription and translation rates set expression noise in a
+single gene.)}
+
+\bibitem{ko1991}
+M.~S.~H.~Ko,
+\textit{A stochastic model for gene induction},
+Journal of Theoretical Biology \textbf{153} (1991), no.~2, 181--194.
+\textit{(Introduces the two-state ON/OFF gene model underlying the telegraph model
+used here.)}
+
+\bibitem{fano1947}
+U.~Fano,
+\textit{Ionization yield of radiations. II. The fluctuations of the number of ions},
+Physical Review \textbf{72} (1947), no.~1, 26--29.
+\textit{(Origin of the variance-to-mean ratio now called the Fano factor.)}
+
+\bibitem{golding2005}
+I.~Golding, J.~Paulsson, S.~M.~Zawilski, and E.~C.~Cox,
+\textit{Real-time kinetics of gene activity in individual bacteria},
+Cell \textbf{123} (2005), no.~6, 1025--1036.
+\textit{(Direct observation of transcriptional bursts in single bacteria; empirical
+support for the burst picture.)}
+
+\bibitem{iyerbiswas2009}
+S.~Iyer-Biswas, F.~Hayot, and C.~Jayaprakash,
+\textit{Stochasticity of gene products from transcriptional pulsing},
+Physical Review E \textbf{79} (2009), no.~3, 031911.
+\textit{(Exact time-dependent solution of the master equation for the two-state
+pulsing gene; reference for the fast- and slow-switching limits.)}
+
+\bibitem{schnoerr2015}
+D.~Schnoerr, G.~Sanguinetti, and R.~Grima,
+\textit{Comparison of different moment-closure approximations for stochastic
+chemical kinetics},
+Journal of Chemical Physics \textbf{143} (2015), no.~18, 185101.
+\textit{(Survey of approximate closure schemes needed when the moment hierarchy does
+not close --- the situation avoided exactly in this paper.)}
+
 \bibitem{vankampen}
 N.~G.~van Kampen,
 \textit{Stochastic Processes in Physics and Chemistry},
@@ -740,6 +816,31 @@ B.~P.~Ingalls,
 University of Waterloo, 2012.
 \textit{(Introductory text on deterministic and stochastic models of biochemical
 and gene-regulatory systems; reference for the moment ODEs.)}
+
+\bibitem{harris2020}
+C.~R.~Harris et al.,
+\textit{Array programming with NumPy},
+Nature \textbf{585} (2020), no.~7825, 357--362.
+\textit{(NumPy; array computation and the random number generation used throughout.)}
+
+\bibitem{virtanen2020}
+P.~Virtanen et al.,
+\textit{SciPy 1.0: fundamental algorithms for scientific computing in Python},
+Nature Methods \textbf{17} (2020), no.~3, 261--272.
+\textit{(SciPy; provides the \texttt{solve\_ivp} integrator used for the moment ODEs.)}
+
+\bibitem{dormand1980}
+J.~R.~Dormand and P.~J.~Prince,
+\textit{A family of embedded Runge--Kutta formulae},
+Journal of Computational and Applied Mathematics \textbf{6} (1980), no.~1, 19--26.
+\textit{(The embedded Runge--Kutta pair implemented as the \texttt{RK45} method.)}
+
+\bibitem{matsumoto1998}
+M.~Matsumoto and T.~Nishimura,
+\textit{Mersenne Twister: a 623-dimensionally equidistributed uniform pseudo-random
+number generator},
+ACM Transactions on Modeling and Computer Simulation \textbf{8} (1998), no.~1, 3--30.
+\textit{(The MT19937 generator supplying every pseudo-random draw in this work.)}
 
 \end{thebibliography}
 
