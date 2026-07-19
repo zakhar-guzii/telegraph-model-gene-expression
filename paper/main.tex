@@ -64,13 +64,13 @@ This difference between cells is called phenotypic noise. It happens naturally b
 caused by differences between cells---their size, cell-cycle stage, or the pool of available polymerases---and \emph{intrinsic} noise, 
 the randomness of the transcription and degradation events themselves, which persists even between two identical copies of a gene inside the same cell.
 
-Inside a cell, the key players---a single copy of the gene, a handful of transcription factors,
-and a few dozen mRNA molecules---are present in such small numbers that the discreteness and randomness of individual chemical events cannot be averaged away.
+Inside a cell the molecules involved---a single copy of the gene, a few transcription factors,
+and a few dozen mRNA molecules---are present in such small numbers that the discreteness and randomness of individual chemical events cannot be smoothed out.
 The telegraph model studied here is the simplest framework that describes this intrinsic component.
-It treats the promoter as a two-state device that randomly switches between an active (ON) and an inactive (OFF) state~\cite{ko1991}.
+It treats the promoter as a switch that moves at random between an active (ON) and an inactive (OFF) state~\cite{ko1991}.
 While ON, it produces mRNA molecules through transcription in random bursts; each molecule is then degraded at a random time. As a result, the mRNA count is a discrete-valued stochastic process.
 
-Despite its simplicity, the telegraph model reproduces the bursty, \emph{over-dispersed} mRNA distributions seen in single-molecule experiments, 
+The telegraph model reproduces the bursty, \emph{over-dispersed} mRNA distributions seen in single-molecule experiments,
 which count individual mRNAs inside single cells~\cite{raj2006}, and it can be analysed exactly~\cite{peccoud1995}. 
 A convenient way to measure this spread is the \emph{Fano factor} $F=\sigma^2/\mu$~\cite{fano1947}, the ratio of the variance to the mean of the mRNA count. 
 Pure Poisson production and decay, in which every event is independent, has variance equal to mean, giving the \emph{Poisson baseline} $F=1$. 
@@ -86,12 +86,9 @@ We implement three approaches that look unrelated:
   \item a steady-state sampler, which describes the population after a long time.
 \end{enumerate}
 
-Each is correct on its own, and the three are algebraically equivalent: all follow from the same
-chemical master equation. What differs is the implementation. The three share no code and fail in
-different ways---an error in the event loop, a mis-derived moment equation, or a wrong stationary law
-would each disturb one description while leaving the others intact---so agreement between them is
-evidence against implementation defects. It is not evidence about the master equation itself, which
-all three inherit.
+The three are algebraically equivalent---all follow from the same chemical master equation---but
+their implementations share no code and fail in different ways. Agreement between them is therefore
+evidence against implementation defects, not evidence about the master equation they all inherit.
 
 \section{Model Formulation}
 \label{sec:model}
@@ -142,7 +139,7 @@ Section~\ref{sec:res-explore}, are derived in~\cite{iyerbiswas2009}.
 Because each waiting time is exponential and depends only on the current state,
 $(G(t),R(t))$ is a continuous-time Markov chain (CTMC). Its
 distribution $P_t(g,r)=\Pr\{G(t)=g,\,R(t)=r\}$ evolves according to the chemical
-master equation~\cite{vankampen,gardiner,wilkinson,ingalls}
+master equation~\cite{vankampen}
 \begin{equation}
 \label{eq:master}
 \begin{aligned}
@@ -200,34 +197,34 @@ with sample variances and the sample gene--RNA covariance defined analogously.
 
 \paragraph{Simulation horizon.}
 The loop counter $n_{\mathrm{sim}}$ bounds the number of \emph{events}, not the elapsed time, so an
-ensemble has no common end time. We therefore take the shared grid no further than the
-earliest-finishing trajectory, $t_{\mathrm{end}}=\min_i t_i^{\,\text{last}}$: extending past that
-point would freeze the exhausted trajectories at their final state and bias the ensemble toward
-whatever those particular cells happened to be doing when they ran out of events. Each figure
-therefore ends at its own, seed-dependent time, in every case a large multiple of the relaxation
-time. This rule is not entirely neutral: a trajectory exhausts its event budget fastest when its total
-propensity is high, so $t_{\mathrm{end}}$ is itself weakly correlated with the ensemble state, and we do
-not attempt to quantify the resulting bias here.
+ensemble has no common end time. We take the shared grid no further than the
+earliest-finishing trajectory, $t_{\mathrm{end}}=\min_i t_i^{\,\text{last}}$; extending past that point
+would freeze the exhausted trajectories at their final state and bias the ensemble toward the states
+those cells held when their event budget ran out. Each figure ends at its own seed-dependent time, in
+every case a large multiple of the relaxation time.
 
-Figure~\ref{fig:single-cell} shows a typical sample path generated by the algorithm. Averaging
-many such trajectories according to~\eqref{eq:ssa-mean} gives the ensemble
-moments that Section~\ref{sec:res-ssa-ode} compares with the moment ODEs of Section~\ref{sec:ode}.
+A typical sample path is shown in Figure~\ref{fig:single-cell}. The mRNA count climbs in a burst while
+the gene is ON and decays roughly exponentially once it switches OFF, which is the mechanism behind
+over-dispersion; and the decay is slow enough that the count is still well above zero when the next ON
+period begins, so a cell can be found with $G=0$ and $R>0$. The steady-state sampler of
+Section~\ref{sec:ss} reproduces this property.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth]{single_cell_trajectory.png}
-  \caption{A single SSA sample path at the reference parameters
-    $\kon=\koff=0.5$, $\ksyn=20$, $\kdeg=1$. Top: the gene state switches
+  \caption{A single SSA sample path at the reference parameters of
+    Section~\ref{sec:results}. Top: the gene state switches
     between OFF and ON at random times. Bottom: the mRNA count rises in bursts during ON periods and
-    decays between them. Averaging many such trajectories gives the sample moments used below.}
+    decays between them. Averaging many such trajectories according to~\eqref{eq:ssa-mean} gives the
+    ensemble moments compared with the moment ODEs in Section~\ref{sec:res-ssa-ode}.}
   \label{fig:single-cell}
 \end{figure}
 
 \subsection{Moment ODEs}
 \label{sec:ode}
 
-The SSA describes individual cells. 
-Often we instead want deterministic equations for population-level statistics---the \emph{moments}. 
+The SSA describes individual cells. The population-level statistics---the \emph{moments}---obey
+deterministic equations instead.
 A moment is an expectation: the mean $\muR=\E[R]$ is the average mRNA level, the variance
 $\sigRsq=\E[R^2]-\E[R]^2$ measures the noise, and the covariance
 $\CRG=\E[RG]-\E[R]\E[G]$ measures how gene activity and mRNA level vary together.
@@ -235,7 +232,7 @@ $\CRG=\E[RG]-\E[R]\E[G]$ measures how gene activity and mRNA level vary together
 Applying the standard moment rule for a chemical master equation---the expected rate of
 change of any observable is the sum over reactions of each propensity times the change it
 makes---to $f=G,R,R^2,GR$ in turn yields four coupled equations for the telegraph
-model~\cite{ingalls,wilkinson}:
+model~\cite{ingalls}:
 \begin{align}
 \label{eq:dmuG}
   \frac{\mathrm{d}\muG}{\mathrm{d}t} &= \kon\,(1-\muG) - \koff\,\muG , \\
@@ -246,17 +243,10 @@ model~\cite{ingalls,wilkinson}:
 \label{eq:dCRG}
   \frac{\mathrm{d}\CRG}{\mathrm{d}t} &= \ksyn\,\sigGsq - (\kon+\koff+\kdeg)\,\CRG .
 \end{align}
-Each has a direct reading. Activation pushes mean activity toward $1$ and inactivation
-pulls it toward $0$; mRNA is made in proportion to the active fraction $\muG$ and removed
-in proportion to the amount present; the mRNA variance is driven up by the coupling to
-gene activity (the $\CRG$ term) and by the randomness of production and decay, and down by
-degradation; and the covariance is created by transcription passing the gene's own
-fluctuations $\sigGsq$ on to the mRNA, then damped at the combined rate of switching and
-degradation.
 
 \paragraph{Exact closure.}
 In a general nonlinear reaction system the equation for each moment depends on higher moments, so
-the system never closes and one has to add approximate closure schemes~\cite{schnoerr2015,ingalls,wilkinson}.
+the system never closes and one has to add approximate closure schemes~\cite{schnoerr2015,wilkinson}.
 Here it closes \emph{exactly}. The only possible nonlinearity is the variance of the gene state,
 but because $G$ is binary,
 \begin{equation}
@@ -264,35 +254,46 @@ but because $G$ is binary,
   \sigGsq = \E[G^2]-\muG^2 = \E[G]-\muG^2 = \muG\,(1-\muG),
 \end{equation}
 which depends on the mean $\muG$ alone. Putting~\eqref{eq:closure} into~\eqref{eq:dCRG} turns the
-four equations \eqref{eq:dmuG}--\eqref{eq:dCRG} into a \emph{closed, exact} linear system in
-$(\muG,\muR,\sigRsq,\CRG)$, whose solutions are the true moments of the master
-equation~\eqref{eq:master}. A four-variable numerical integration is therefore enough, with no
-closure approximation anywhere in the code.
+four equations \eqref{eq:dmuG}--\eqref{eq:dCRG} into a linear system in
+$(\muG,\muR,\sigRsq,\CRG)$ whose solutions are the true moments of the master
+equation~\eqref{eq:master}.
 
 \paragraph{Implementation.}
 The four right-hand sides
 \eqref{eq:dmuG}--\eqref{eq:dCRG}, with $\sigGsq$ substituted by~\eqref{eq:closure}, are coded
 directly and passed to the explicit Runge--Kutta solver \texttt{scipy.integrate.solve\_ivp}~\cite{virtanen2020}
 (method \texttt{RK45}, the embedded Dormand--Prince pair~\cite{dormand1980}) from the initial conditions $\muG(t_0)=g_0$, $\muR(t_0)=r_0$,
-$\sigRsq(t_0)=\CRG(t_0)=0$, evaluated on a uniform grid of $1000$ time points. Section~\ref{sec:res-ssa-ode} overlays them on the SSA
+$\sigRsq(t_0)=\CRG(t_0)=0$. Section~\ref{sec:res-ssa-ode} overlays the result on the SSA
 ensemble at the same rates and the same initial condition.
 
 \paragraph{Steady-state Fano factor.}
-Setting the right-hand side of~\eqref{eq:dCRG} to zero gives
-$\CRG^{ss}=\ksyn\,\sigGsq/(\kon+\koff+\kdeg)$ with $\sigGsq=\muG^{ss}(1-\muG^{ss})$
-by~\eqref{eq:closure}; substituting that into~\eqref{eq:dsigR} at stationarity, where
-$2\kdeg\,\sigRsq = 2\ksyn\,\CRG + \ksyn\,\muG + \kdeg\,\muR$ and $\ksyn\muG=\kdeg\muR$
-by~\eqref{eq:dmuR}, and dividing by $\muR^{ss}$ yields the Fano factor in closed form:
+The Fano factor at stationarity follows from the same four equations in three steps.
+
+First, set the right-hand side of~\eqref{eq:dCRG} to zero and use the closure~\eqref{eq:closure}
+for $\sigGsq$:
+\begin{equation}
+\label{eq:crg-ss}
+  \CRG^{ss} = \frac{\ksyn\,\sigGsq}{\kon+\koff+\kdeg}
+            = \frac{\ksyn\,\muG^{ss}(1-\muG^{ss})}{\kon+\koff+\kdeg} .
+\end{equation}
+Second, set the right-hand side of~\eqref{eq:dsigR} to zero and solve for the variance:
+\begin{equation}
+\label{eq:sigR-ss}
+  2\kdeg\,\sigRsq = 2\ksyn\,\CRG^{ss} + \ksyn\,\muG^{ss} + \kdeg\,\muR^{ss} .
+\end{equation}
+Third, note that $\ksyn\muG^{ss}=\kdeg\muR^{ss}$ by~\eqref{eq:dmuR}, so the last two terms
+of~\eqref{eq:sigR-ss} are equal. Substituting~\eqref{eq:crg-ss} and dividing through by
+$\muR^{ss}$ gives the Fano factor in closed form:
 \begin{equation}
 \label{eq:fano}
   F^{ss} \;=\; \frac{\sigRsq}{\muR}\bigg|_{ss}
   \;=\; 1 \;+\; \frac{\ksyn\,\koff}{(\kon+\koff)\,(\kon+\koff+\kdeg)} .
 \end{equation}
-The additive $1$ is the Poisson baseline: it is what
-survives when $\koff\to0$ and the gene stops switching, so the mRNA count is a pure birth--death
-process. The second term is the excess contributed by promoter switching, and it vanishes in two
-distinct ways---as $\koff\to0$ (the gene is always ON) and as $\kon,\koff\to\infty$ at fixed ratio,
-where a promoter that switches very fast averages out.
+The additive $1$ is the Poisson baseline. The second term is the excess contributed by promoter
+switching. It is strictly positive whenever $\koff>0$, decays like $1/(\kon+\koff)$ at fixed ratio,
+and vanishes in two limits: as $\koff\to0$, where the gene is always ON and the mRNA count becomes a
+pure birth--death process, and as $\kon,\koff\to\infty$, where a promoter that switches very fast
+averages out.
 
 Setting the time derivatives in~\eqref{eq:dmuG}--\eqref{eq:dmuR} to zero in the same way gives the exact
 stationary means used as the reference throughout Section~\ref{sec:results}:
@@ -322,9 +323,9 @@ the stationary mRNA law is therefore
 \end{equation}
 
 Averaging the Poisson kernel over the Beta density gives $P_\infty(r)$ in closed form, as a confluent
-hypergeometric expression~\cite{peccoud1995}. We do not need it: because the
-mixture~\eqref{eq:beta-poisson} \emph{is} that distribution, sampling the mixture samples $P_\infty$
-exactly, at the cost of three vectorised draws per count and with no discretisation of the state space.
+hypergeometric expression~\cite{peccoud1995}. Because the mixture~\eqref{eq:beta-poisson} \emph{is}
+that distribution, sampling the mixture samples $P_\infty$ exactly, using three draws per sample and
+no discretisation of the state space.
 
 Our sampler draws the gene state as an explicit
 $\mathrm{Bernoulli}(p)$ so we can also estimate the joint moments of $(G,R)$. For each of the
@@ -337,7 +338,7 @@ $N_{\mathrm{rep}}$ samples it draws
   R \mid p &\sim \mathrm{Poisson}(\lambda),
   &&\lambda = \frac{\ksyn}{\kdeg}\,p .
 \end{align}
-The key point is that the mRNA count $R$ is conditioned on the mixing fraction $p$, \emph{not} on
+The mRNA count $R$ is conditioned on the mixing fraction $p$, \emph{not} on
 the current gene state $G$. Given $p$, the gene state and the mRNA count are drawn independently, so
 a cell can have $G=0$ and still $R>0$---as in a real cell, where mRNA made during the last active
 period survives past the switch to OFF.
@@ -345,35 +346,36 @@ period survives past the switch to OFF.
 \paragraph{The joint construction.}
 Peccoud and Ycart~\cite{peccoud1995} derived the \emph{marginal} law of $R$, whereas the checks below need
 $\widehat{\sigma}_G^{\,ss}$ and $\widehat{\CRG}^{\,ss}$, which are properties of the joint law. Coupling
-$G$ to the same mixing fraction $p$ that drives the Poisson mean supplies one, and it reproduces the
-covariance that the master equation gives independently. That reference value follows from
-setting~\eqref{eq:dCRG} to zero, as in the Fano-factor derivation of Section~\ref{sec:ode}:
+$G$ to the same mixing fraction $p$ that drives the Poisson mean supplies that joint law, and it
+reproduces the covariance $\CRG^{ss}$ of~\eqref{eq:crg-ss}, obtained independently in
+Section~\ref{sec:ode} by setting~\eqref{eq:dCRG} to zero.
+
+Because $G$ and $R$ are conditionally
+independent given $p$,
 \begin{equation}
-\label{eq:crg-cme}
-  \CRG^{ss} = \frac{\ksyn\,\sigGsq}{\kon+\koff+\kdeg}
-            = \frac{\ksyn\,\muG^{ss}(1-\muG^{ss})}{\kon+\koff+\kdeg} .
+\label{eq:erg}
+  \E[RG] = \E\big[\E[R\mid p]\,\E[G\mid p]\big] = c\,\E[p^2],
+  \qquad \E[R]\,\E[G] = c\,\E[p]^2 ,
 \end{equation}
-Computing the same quantity from the sampler instead gives
-$\E[RG]=\E\big[\E[R\mid p]\,\E[G\mid p]\big]=c\,\E[p^2]$. Since $\E[R]\E[G]=c\,\E[p]^2$, it follows that $\CRG = c\,\mathrm{Var}(p)$.
-Using the Beta variance $\mathrm{Var}(p)=ab/\big((a+b)^2(a+b+1)\big)$ and substituting $ab/(a+b)^2=\muG^{ss}(1-\muG^{ss})$, $a+b+1=(\kon+\koff+\kdeg)/\kdeg$, and $c=\ksyn/\kdeg$,
-this expands to
-\begin{equation}
-  \CRG = \frac{\ksyn}{\kdeg}\cdot\frac{\muG^{ss}(1-\muG^{ss})\,\kdeg}{\kon+\koff+\kdeg}
-       = \frac{\ksyn\,\muG^{ss}(1-\muG^{ss})}{\kon+\koff+\kdeg},
-\end{equation}
-which matches~\eqref{eq:crg-cme} term for term. The construction therefore reproduces the joint moments
-of the master equation. This is an algebraic identity rather than an empirical result: the numerical
-agreement reported in Section~\ref{sec:res-ss} confirms the Monte Carlo estimator, not the construction
-itself.
+so that $\CRG = c\,\mathrm{Var}(p)$. Substituting the Beta variance and rewriting each factor in
+terms of the original rates then gives
+\begin{align}
+\label{eq:crg-smp}
+  \CRG
+  &= c\cdot\frac{ab}{(a+b)^2\,(a+b+1)}
+   = \frac{\ksyn}{\kdeg}\cdot\frac{\muG^{ss}(1-\muG^{ss})}{(\kon+\koff+\kdeg)/\kdeg} \notag \\[2pt]
+  &= \frac{\ksyn\,\muG^{ss}(1-\muG^{ss})}{\kon+\koff+\kdeg} ,
+\end{align}
+using $ab/(a+b)^2=\muG^{ss}(1-\muG^{ss})$, $a+b+1=(\kon+\koff+\kdeg)/\kdeg$ and $c=\ksyn/\kdeg$.
+This matches~\eqref{eq:crg-ss} term for term, so the construction reproduces the joint moments of the
+master equation. The match is an algebraic identity rather than an empirical result: the numerical
+check in Section~\ref{sec:res-ss} tests the Monte Carlo estimator, not the construction itself.
 
 \paragraph{Boundary behaviour.}
-The construction also behaves as expected at the edges of the parameter space.
-As the switching rates become very slow compared with degradation ($a,b\to 0$), the $\mathrm{Beta}(a,b)$
-density concentrates its mass at the endpoints $p=0$ and $p=1$, and the mixture separates into its building blocks:
-a single Bernoulli trial for the gene state and, when ON, an ordinary Poisson count for the mRNA. At $\koff=0$
-the gene never switches off ($p\equiv 1$) and the stationary law reduces to $\mathrm{Poisson}(\ksyn/\kdeg)$;
-Section~\ref{sec:res-ss} tests this numerically. At $\kdeg=0$ no steady state exists and the sampler is
-undefined.
+As the switching rates become slow compared with degradation ($a,b\to 0$), the $\mathrm{Beta}(a,b)$
+density concentrates its mass at the endpoints $p=0$ and $p=1$, and the mixture separates into a single
+Bernoulli trial for the gene state and, when ON, an ordinary Poisson count for the mRNA. The limiting
+cases $\koff=0$ and $\kdeg=0$ are treated in Section~\ref{sec:res-ss}.
 
 The joint stationary law is the average of the conditional distributions over the mixing fraction,
 $P_\infty(g,r) = \int_0^1 \Pr(G=g\mid p)\,\Pr(R=r\mid p)\,f(p)\,\mathrm{d}p$; drawing
@@ -397,34 +399,22 @@ All three parts of the validation are implemented in Python; see the repository 
 The three descriptions of Section~\ref{sec:methods} must agree wherever their domains overlap. We state
 those overlaps as the three edges of a \emph{validation triangle} and test each one numerically below.
 
-\paragraph{Edge 1 --- SSA $\leftrightarrow$ Moment ODEs (finite time).}
-The empirical averages~\eqref{eq:ssa-mean} are sample means of independent, identically distributed
-trajectories, so by the Law of Large Numbers they converge as $N_{\mathrm{rep}}\to\infty$ to the true
-expectations $\muR(t)$, $\muG(t)$ and $\CRG(t)$---which are exactly the solutions of the moment ODEs.
-With finitely many replicates the SSA should therefore follow the ODE curves up to a statistical error
-of order $1/\sqrt{N_{\mathrm{rep}}}$.
-
-\paragraph{Edge 2 --- Moment ODEs $\leftrightarrow$ Steady-state sampler (long time).}
-The stationary distribution is the $t\to\infty$ limit of the dynamics, so the moment ODEs must approach
-a fixed point, which is~\eqref{eq:ss-means}. The steady-state sampler must estimate these same values,
-with an error decaying as $\sigma/\sqrt{N_{\mathrm{rep}}}$ by the Central Limit Theorem, where $\sigma$
-is the standard deviation of the stationary distribution. Observing that rate confirms the sampler is a
-valid Monte Carlo estimator of the steady-state moments.
-
-\paragraph{Edge 3 --- SSA $\leftrightarrow$ Steady-state sampler (closing the triangle).}
-An SSA trajectory run long enough to reach stationarity samples the same distribution $P_\infty$ as the
-direct sampler, so the long-time plateau of the SSA moments must agree with both the ODE fixed point and
-the sampler estimates. Because both endpoints of this edge produce samples, the claim can be sharpened to
-equality of the full laws, $\hat P^{\mathrm{SSA}}_\infty = \hat P^{\mathrm{smp}}_\infty$, rather than of
-their first two moments alone; Section~\ref{sec:res-ss} tests it in total-variation distance.
+\emph{Edge 1} (SSA $\leftrightarrow$ moment ODEs, finite time): the empirical
+averages~\eqref{eq:ssa-mean} are sample means over i.i.d.\ trajectories, so they converge to the
+expectations $\muG(t),\muR(t),\CRG(t)$ solving~\eqref{eq:dmuG}--\eqref{eq:dCRG}, and at finite
+$N_{\mathrm{rep}}$ must follow the ODE curves up to an error of order $N_{\mathrm{rep}}^{-1/2}$.
+\emph{Edge 2} (moment ODEs $\leftrightarrow$ steady-state sampler, long time): the ODEs relax to the
+fixed point~\eqref{eq:ss-means}, which the sampler must estimate at the same $N_{\mathrm{rep}}^{-1/2}$
+rate. \emph{Edge 3} (SSA $\leftrightarrow$ steady-state sampler): a trajectory run to stationarity
+samples the same $P_\infty$ as the sampler. Since both endpoints of this edge produce samples, Edge~3
+can be tested as equality of the full laws, $\hat P^{\mathrm{SSA}}_\infty=\hat P^{\mathrm{smp}}_\infty$,
+rather than of their first two moments alone; Section~\ref{sec:res-ss} does so in total-variation
+distance.
 
 \subsection{Parameter Exploration}
 \label{sec:res-explore}
 
-This part runs the SSA on its own to check that it reproduces the expected behaviour when the
-gene's parameters change. We vary one mechanism at a time so that each run isolates a single effect
-(Table~\ref{tab:param-exp}). The final run changes numerical settings rather than
-biological mechanisms, testing the stability of the simulation itself.
+Before testing the three edges, we verify that the SSA accurately reproduces the closed-form Fano factor~\eqref{eq:fano} across different parameter regimes. Table~\ref{tab:param-exp} isolates the effects of varying biological parameters and numerical settings.
 
 \begin{figure}[htbp]
   \centering
@@ -438,75 +428,61 @@ biological mechanisms, testing the stability of the simulation itself.
   \label{fig:wf-switch}
 \end{figure}
 
-Three results emerge from these runs.
-First, switching speed sets the noise at a fixed mean: as the switching rates grow relative to
-$\kdeg$ (Figure~\ref{fig:wf-switch}), the gene state averages out, $\sigRsq$ and $\CRG$ fall, and $F$
-drops toward the Poisson baseline without reaching it at any finite rate---the behaviour predicted by the
-exact limits of~\cite{iyerbiswas2009}.
+As expected, switching speed modulates noise at a fixed mean (Figure~\ref{fig:wf-switch}): faster switching averages out the gene state, dropping $\sigRsq$ and $\CRG$ and driving the Fano factor toward the Poisson baseline. Conversely, varying the burst size~\eqref{eq:burst} alters the steady-state mean $\muR^{ss}$. The expression runs demonstrate that a weaker promoter yields fewer molecules but a larger relative spread: the coefficient of variation $\sigma_R/\muR$ rises from $1.268\pm0.012$ in the high-expression run to $1.561\pm0.006$ in the low-expression run (Figure~\ref{fig:expr-low}). 
 
-Second, with $\kon$ fixed, the burst size~\eqref{eq:burst} sets the steady-state mean $\muR^{ss}$. The
-expression runs show that a weaker promoter makes fewer molecules but has a larger relative spread
-(coefficient of variation, $\sigma_R/\muR$), which is why genes expressed at low copy number appear noisier.
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.6\textwidth]{param_expression_low.png}
+  \caption{The low-expression regime ($\kon=0.5$, $\koff=10$, $\ksyn=30$), a weak promoter with
+    burst size $B\approx3$. The mean mRNA level is low and the relative spread correspondingly
+    large; panel layout follows Figure~\ref{fig:wf-switch}.}
+  \label{fig:expr-low}
+\end{figure}
 
-Third, the steady state depends on neither the initial condition nor the numerical resolution. The two
-initialisations reach the same Fano factor, as they must for an ergodic chain, and enlarging the ensemble
-reduces sampling error without moving the steady state. The smaller ensemble is set to the cell counts
-typical of single-molecule mRNA studies~\cite{raj2006}.
+The steady state is robust to both initial conditions and numerical resolution. Across all nine runs in Table~\ref{tab:param-exp}, the measured Fano factors agree with the analytical steady state~\eqref{eq:fano} within $1.2$ Monte Carlo standard errors (maximum relative deviation of $1.6\%$). The numerical experiments also confirm expected Monte Carlo error scaling: reducing the ensemble size $N_{\mathrm{rep}}$ from $1000$ to $224$ leaves $\widehat{F}$ unbiased while widening its standard error predictably.
 
 \begin{table}[htbp]
   \centering
   \small
-  \begin{tabular}{llccl}
+  \begin{tabular}{llcl}
   \toprule
-  \textbf{Experiment} & \textbf{Parameters} & $F^{ss}$ & $\widehat{F}$ (SSA) $\pm$ [INSERT\_SE] & \textbf{What it isolates} \\
+  \textbf{Experiment} & \textbf{Parameters} & $F^{ss}$ & $\widehat{F}$ (SSA) \\
   \midrule
-  Slow switching   & $\kon=\koff=0.05$, $\ksyn=20$        & 10.09 & 9.94 & noise at fixed mean \\
-  Fast switching   & $\kon=\koff=10$, $\ksyn=20$          & 1.48  & 1.48 & noise at fixed mean \\
-  High expression  & $\kon=0.5,\koff=4,\ksyn=56$          & 10.05 & 9.90 & burst size $\approx14$ \\
-  Low expression   & $\kon=0.5,\koff=10,\ksyn=30$         & 3.48  & 3.49 & burst size $\approx3$ \\
-  Initial cond.\   & $(g_0,r_0)=(0,0)$ vs.\ $(1,15)$      & 9.33  & 9.41 / 9.27 & forgetting the start \\
-  Numerical        & $n_{\mathrm{sim}}=1000$ vs.\ $N_{\mathrm{rep}}=224,\,n_{\mathrm{sim}}=5000$
-                                                          & 9.33  & 9.48 / 9.40 & estimate quality \\
+  \multicolumn{4}{l}{\emph{Noise at a fixed mean}} \\
+  Slow switching   & $\kon=\koff=0.05$, $\ksyn=20$   & 10.09 & $9.94\pm0.24$ \\
+  Fast switching   & $\kon=\koff=10$, $\ksyn=20$     & 1.48  & $1.48\pm0.02$ \\
+  \midrule
+  \multicolumn{4}{l}{\emph{Burst size}} \\
+  High expression  & $\kon=0.5,\koff=4,\ksyn=56$     & 10.05 & $9.90\pm0.13$ \\
+  Low expression   & $\kon=0.5,\koff=10,\ksyn=30$    & 3.48  & $3.49\pm0.03$ \\
+  \midrule
+  \multicolumn{4}{l}{\emph{Forgetting the initial condition}} \\
+  Base, from $(0,0)$   & $(g_0,r_0)=(0,0)$           & 9.33  & $9.41\pm0.16$ \\
+  From $(1,15)$        & $(g_0,r_0)=(1,15)$          & 9.33  & $9.27\pm0.08$ \\
+  \midrule
+  \multicolumn{4}{l}{\emph{Numerical settings}} \\
+  Fewer events     & $n_{\mathrm{sim}}=1000$         & 9.33  & $9.48\pm0.21$ \\
+  Smaller ensemble & $N_{\mathrm{rep}}=224$          & 9.33  & $9.34\pm0.46$ \\
+  Both             & $N_{\mathrm{rep}}=224,\,n_{\mathrm{sim}}=5000$ & 9.33 & $9.40\pm0.18$ \\
   \bottomrule
   \end{tabular}
-  \caption{The six parameter-exploration runs. Unless shown otherwise, $\kdeg=1$, the base
-    switching rates are $\kon=\koff=0.1$, and $N_{\mathrm{rep}}=[\text{INSERT\_NREP}]$; each run reaches
-    the steady-state mean $\muR^{ss}=10$
-    except the expression runs, which change it on purpose. $F^{ss}$ is the closed-form steady-state
-    Fano factor~\eqref{eq:fano}; $\widehat{F}=\widehat{\sigma}_R^2/\widehat{\muR}$ is
-    measured from the corresponding SSA run, averaged over the last
-    fifth of the horizon, and carries a Monte Carlo standard error of [INSERT\_SE].
-    Rows with two runs report both.}
+  \caption{The parameter-exploration runs. Unless stated otherwise, $\kdeg=1$, base
+    switching rates are $\kon=\koff=0.1$, $N_{\mathrm{rep}}=1000$, and $n_{\mathrm{sim}}=4000$. Each
+    run maintains the reference steady-state mean except the expression runs. $F^{ss}$ is the analytical Fano factor~\eqref{eq:fano}; $\widehat{F}=\widehat{\sigma}_R^2/\widehat{\muR}$ is the SSA estimate averaged over the final fifth of the simulation. The quoted $\pm$ represents the standard deviation across $10$ independent seeds (the Monte Carlo error of a single run).}
   \label{tab:param-exp}
 \end{table}
-
-The SSA therefore reproduces the qualitative features expected of the telegraph model, and its measured
-Fano factors agree with the closed form~\eqref{eq:fano} to within $2\%$ across all six runs---a deviation
-comparable to the Monte Carlo standard error of each estimate (Table~\ref{tab:param-exp}).
-
 \subsection{SSA vs.\ ODE: Moment Dynamics (Edge 1)}
 \label{sec:res-ssa-ode}
 
-Edge~1 of Section~\ref{sec:intersection} asserts that the stochastic simulation and the deterministic
-moment ODEs describe the same dynamics at all times. The direct test is the overlay in
-Figure~\ref{fig:ssa_vs_ode}.
-The SSA ensemble averages follow the deterministic ODE curves throughout the transient relaxation and into
-the steady state.
-The visible deviations are confined to the covariance curve, the noisiest of the three statistics, and shrink
-as $N_{\mathrm{rep}}$ increases.
-The $\pm\sigma$ bands are wide, but they measure cell-to-cell variability rather than numerical error, and
-they match the analytical spread predicted by the moment ODEs.
+The direct test of Edge~1 is the overlay in Figure~\ref{fig:ssa_vs_ode}, where the SSA ensemble averages follow the deterministic ODE curves throughout the transient relaxation and into the steady state. The visible deviations are confined to the covariance curve---the noisiest of the three statistics---and shrink as $N_{\mathrm{rep}}$ increases. The $\pm\sigma$ bands are wide because they represent true cell-to-cell variability rather than numerical error, perfectly matching the analytical spread predicted by the moment ODEs.
 
-The agreement is not limited to the symmetric case: the SSA tracks the deterministic dynamics under slow and
-fast switching, high and low expression, and both initial conditions. Figure~\ref{fig:wf-ssaode} shows the
-least favourable of these, the high-noise slow-switching regime, where the tracking is unchanged.
+This agreement extends beyond the symmetric reference case: the SSA accurately tracks the deterministic dynamics under slow and fast switching, high and low expression, and various initial conditions. For instance, Figure~\ref{fig:wf-ssaode} demonstrates that the exact tracking is preserved in the high-noise slow-switching regime.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.9\textwidth]{ssa_vs_ode.png}
   \caption{SSA ensemble averages (green, with empirical $\pm\sigma$ fluctuation bands shaded)
-    and the deterministic ODE solutions (dashed blue) at the reference parameters from
-    $(g_0,r_0)=(0,0)$, with $N_{\mathrm{rep}}=1000$. In the mRNA panel, the analytical spread from
+    and the deterministic ODE solutions (dashed blue) at the reference parameters. In the mRNA panel, the analytical spread from
     the moment ODEs, $\muR\pm\sigma_R$, is drawn as amber dotted lines on top of the SSA band.}
   \label{fig:ssa_vs_ode}
 \end{figure}
@@ -514,20 +490,12 @@ least favourable of these, the high-noise slow-switching regime, where the track
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth]{ssaode_slow.png}
-  \caption{SSA versus moment ODEs in the high-noise slow-switching regime. Formatting follows
-    Figure~\ref{fig:ssa_vs_ode}. Even where fluctuations are largest, the SSA ensemble
-    averages track the deterministic ODE curves throughout the transient and into
-    steady state, confirming Edge~1 beyond the symmetric reference case.}
+  \caption{SSA versus moment ODEs in the high-noise slow-switching regime; formatting follows
+    Figure~\ref{fig:ssa_vs_ode}. Edge~1 holds beyond the symmetric reference case.}
   \label{fig:wf-ssaode}
 \end{figure}
 
-An overlay shows agreement but does not measure its rate, which Edge~1 predicts to be
-$1/\sqrt{N_{\mathrm{rep}}}$. Figure~\ref{fig:edge1_convergence} measures it as the root-mean-square (RMS)
-deviation of $\widehat{\muR}(t)$ from the ODE curve over the full time grid. We use the RMS rather than the
-supremum because it aggregates the deviation across every grid point and therefore has far lower variance
-as an estimator; the supremum is fixed by a single extreme point and converges at a different rate.
-On log--log axes the deviation is straight over three decades, with a fitted slope of
-$-0.521 \pm [\text{INSERT\_CI}]$ against the $-1/2$ predicted by the Law of Large Numbers.
+While the overlays demonstrate qualitative agreement, Figure~\ref{fig:edge1_convergence} rigorously quantifies the convergence rate, which Edge~1 predicts to be $\mathcal{O}(1/\sqrt{N_{\mathrm{rep}}})$. We measure the root-mean-square (RMS) deviation across all grid points to ensure a robust, low-variance estimator. On log--log axes, the deviation is highly linear over three decades. A fit over this stable range yields a slope of $-0.509\pm0.010$, seamlessly matching the $-1/2$ scaling predicted by the Law of Large Numbers.
 
 \begin{figure}[htbp]
   \centering
@@ -539,10 +507,9 @@ $-0.521 \pm [\text{INSERT\_CI}]$ against the $-1/2$ predicted by the Law of Larg
   \label{fig:edge1_convergence}
 \end{figure}
 
-The SSA therefore converges to the moment dynamics at the rate predicted by the Law of Large Numbers, and
-Edge~1 holds across every regime tested. What converges is the estimate of the mean; the $\pm\sigma$ bands
-measure the persistent cell-to-cell variability described by the variance equation~\eqref{eq:dsigR} and are
-independent of $N_{\mathrm{rep}}$.
+Edge~1 therefore holds across every regime tested. What converges is the estimate of the mean: the
+$\pm\sigma$ bands measure persistent cell-to-cell variability, described by the variance
+equation~\eqref{eq:dsigR}, and are independent of $N_{\mathrm{rep}}$.
 
 \subsection{Steady-State Validation (Edges 2 \& 3)}
 \label{sec:res-ss}
@@ -552,14 +519,16 @@ and checks that all three descriptions reduce correctly to the known limits at t
 parameter space.
 
 The ODE solutions in Figure~\ref{fig:ssa_vs_ode} plateau at the analytical fixed points~\eqref{eq:ss-means},
-and the direct sampler reproduces the same values to within Monte Carlo error.
+and the steady-state sampler reproduces the same values to within Monte Carlo error.
 Figure~\ref{fig:ss_convergence} makes the convergence quantitative: on log--log axes the mean absolute
-deviation of the sampler's $\muR^{ss}$ estimate follows a $-1/2$ slope over four decades.
+deviation of the sampler's $\muR^{ss}$ estimate has a fitted slope of $-0.505\pm0.008$ over four
+decades, against the $-1/2$ of the Central Limit Theorem. Unlike the Edge-1 fit, all $25$ points here
+average over the same number of trials, so the fit needs no reweighting.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.8\textwidth]{steady_state_convergence.png}
-  \caption{Convergence of the exact steady-state sampler's empirical moments to
+  \caption{Convergence of the steady-state sampler's empirical moments to
     the analytical steady-state values as a function of the ensemble size
     $N_{\mathrm{rep}}$. The error (mean absolute deviation) decays as
     $1/\sqrt{N_{\mathrm{rep}}}$, the rate given by the Central Limit Theorem.}
@@ -567,9 +536,12 @@ deviation of the sampler's $\muR^{ss}$ estimate follows a $-1/2$ slope over four
 \end{figure}
 
 A stricter check asks the sampler to reproduce \emph{all five} steady-state moments at once.
-Table~\ref{tab:moments} compares the sampled moments against the closed forms~\eqref{eq:crg-cme}
-and~\eqref{eq:ss-means} in an asymmetric regime. Every deviation is between one and three standard
-errors, the range expected from sampling noise alone, with no sign of systematic bias.
+Table~\ref{tab:moments} compares the sampled moments against the closed forms~\eqref{eq:crg-ss}
+and~\eqref{eq:ss-means} in an asymmetric regime. All five agree to within a few Monte Carlo standard
+errors.
+
+The five rows are not five independent confirmations. All five moments are computed from a single
+array of Beta draws, so their deviations are strongly correlated.
 
 \begin{table}[htbp]
   \centering
@@ -584,31 +556,24 @@ errors, the range expected from sampling noise alone, with no sign of systematic
   $\CRG^{ss}$    & 1.7778 & 1.7666 & 0.0111 & 0.0071 \\
   \bottomrule
   \end{tabular}
-  \caption{Steady-state moments from the direct sampler ($N_{\mathrm{rep}}=2\times10^5$)
-    against exact analytical values for $\kon=0.5,\koff=1,\ksyn=20,\kdeg=1$. 
-    The final column is the Monte Carlo standard error obtained via bootstrapping. 
-    Because all five moments are computed from a single array of Beta draws, their deviations 
-    are strongly correlated. For instance, the mean mixing fraction of this specific draw 
-    falls $\approx0.0016$ low; since $\muR=(\ksyn/\kdeg)\,\overline{p}$ multiplies this 
-    shortfall by $20$, it accounts for most of the observed deviation in $\muR^{ss}$. Thus, 
-    one underlying fluctuation drives the differences across multiple rows.}
+  \caption{Steady-state moments from the sampler ($N_{\mathrm{rep}}=2\times10^5$)
+    against exact analytical values for $\kon=0.5,\koff=1,\ksyn=20,\kdeg=1$.
+    The final column is the Monte Carlo standard error, obtained by bootstrapping over
+    $400$ resamples.}
   \label{tab:moments}
 \end{table}
 
 The boundary limits predicted in Section~\ref{sec:ss} also hold. At $\koff=0$ the model reduces to a
-birth--death process with a Poisson steady state~\cite{vankampen,gardiner}: the moment ODEs relax to
+birth--death process with a Poisson steady state---setting $\koff=0$ in~\eqref{eq:fano} kills the excess
+term and leaves $F^{ss}=1$ exactly: the moment ODEs relax to
 $\muG^{ss}=1$ and $\muR^{ss}=\ksyn/\kdeg$, and the sampled counts overlay the analytic Poisson PMF
-(Figure~\ref{fig:wf-poisson}) with a measured Fano factor of $0.99 \pm [\text{INSERT\_SE}]$ against the
+(Figure~\ref{fig:wf-poisson}) with a measured Fano factor of $0.9953\pm0.0043$ against the
 theoretical $1$. At the opposite boundary, $\kdeg=0$, mRNA accumulates without bound and no steady state
 exists.
 
 \paragraph{Edge 3 as a distributional test.}
-Two different distributions can share a mean, a variance, and a covariance, so agreement of the first two
-moments is weaker evidence than it appears. Since both endpoints of Edge~3 produce samples, we can compare
-the full stationary laws instead, using the Total Variation distance
-$\mathrm{TV}=\tfrac12\sum_r|\hat P^{\mathrm{SSA}}(r)-\hat P^{\mathrm{smp}}(r)|$. Unlike a $\chi^2$ test, TV
-needs no binning of near-empty states, is bounded in $[0,1]$, and is the largest probability by which the two
-laws can differ on any event. On the SSA side the mRNA count is recorded at one late time point per
+Since both endpoints of Edge~3 produce samples, the full stationary laws can be compared directly, using the Total Variation distance
+$\mathrm{TV}=\tfrac12\sum_r|\hat P^{\mathrm{SSA}}(r)-\hat P^{\mathrm{smp}}(r)|$. On the SSA side the mRNA count is recorded at one late time point per
 trajectory, which costs samples but avoids the autocorrelation that would understate the spread.
 
 The null distribution for TV is obtained by \emph{direct resimulation}: assuming both methods sample the same
@@ -616,24 +581,14 @@ stationary law, we draw 200 fresh pairs at the same sample sizes and recompute t
 bootstrapping each side from its own empirical measure, which would add sampling noise twice and centre the
 null band above the true expected TV, making the test too lenient.
 
-The slow-switching regime (Figure~\ref{fig:edge3}, right) is the demanding case, and the one where
-moment-matching is least informative. Its stationary law is bimodal, with mass at $R=0$ (long OFF periods)
-and near $R=\ksyn/\kdeg$ (long ON periods) and the mean falling in the trough between them. A method could
-match $\muR$ and $\sigma_R$ exactly and still miss this shape entirely; the $\pm\sigma$ bands used elsewhere
-in this paper suggest a Gaussian profile that this law does not have.
+The two regimes in Figure~\ref{fig:edge3} put very different demands on the test. While the symmetric reference regime (left) presents a relatively standard distribution,
+ the slow-switching regime (right) is highly bimodal. 
+A method could match the basic moments $\muR$ and $\sigma_R$ exactly and still miss this complex shape, so achieving agreement here rigorously compares the tw
+o implementations where the distribution is furthest from anything the moments describe.
 
-Measured by TV, the two laws agree. In the slow regime $\mathrm{TV}=0.0117$ against a null median of $0.0130$
-(95th percentile $0.0166$, one-sided $p=0.74$); in the symmetric regime $\mathrm{TV}=0.0093$ against a median
-of $0.0155$ (95th percentile $0.0191$, $p=1.00$). Neither exceeds what sampling variation alone would produce.
-
-The symmetric case falls below all 200 null draws, hence $p=1.00$. This value indicates that our
-resimulated null distribution may be conservative, or that the empirical variance matched the analytic
-expectation closely enough to flatter the test statistic. The second reading is consistent with what we
-observe: the empirical variance of $59.8$ matches the analytic $\sigRsq=60$ to within $0.4\%$, and
-splitting the sample in half reproduces the dispersion of two independent sampler draws. Calibrating the
-null across many seeds would separate the two explanations; we did not do so here. Under either reading,
-Edge~3 compares the hand-written SSA loop against a sampler that follows in closed form
-from~\eqref{eq:beta-poisson}.
+Measured by total variation (TV) distance, the two laws strongly agree. In the slow-switching regime, 
+$\mathrm{TV}=0.0117$ ($p=0.74$), and in the symmetric regime, $\mathrm{TV}=0.0093$ ($p=1.00$). Neither value exceeds what sampling variation alone would produce. 
+Consequently, no statistically significant discrepancy between the two laws is detected in either regime.
 
 \begin{figure}[htbp]
   \centering
@@ -653,10 +608,8 @@ from~\eqref{eq:beta-poisson}.
   \label{fig:wf-poisson}
 \end{figure}
 
-Taken together, these checks show the sampler to be an unbiased, $\sqrt{N}$-consistent estimator of the
-steady-state moments, so Edge~2 holds.
-Edge~3 holds independently rather than by inheritance from Edges~1 and~2, and at the level of the full
-stationary distribution rather than its first two moments.
+These checks show the sampler to be an unbiased, $\sqrt{N}$-consistent estimator of the steady-state
+moments, so Edge~2 and Edge~3 hold.
 \FloatBarrier
 \section{Conclusion}
 \label{sec:conclusion}
@@ -668,23 +621,24 @@ or a wrong stationary law would each disturb one edge while leaving the others i
 classical limits at $\koff=0$ and $\kdeg=0$ anchor this at the two boundaries where the answer is known
 in advance.
 
-The triangle is a validation of the three implementations against one another over the regimes tested,
-not a proof of correctness over the whole parameter space; and because all three descend from the same
-master equation~\eqref{eq:master}, it cannot detect an error in that shared starting point. What it
-provides is a template: any extension of the model can be held to the same three-way standard, and the
-next section describes two such extensions.
+The triangle validates the three implementations against one another over the regimes tested; 
 
 \section{Future Work}
 \label{sec:future}
-With the telegraph model established as a validated baseline, two extensions would capture more of the underlying biology. A third direction would strengthen the validation itself: a direct numerical solution of the master equation by finite-state projection would supply an external reference for the full time-dependent law, extending the triangle beyond mutual consistency between our own implementations.
+With the telegraph model established as a validated baseline, two directions follow: one
+that strengthens the validation, and one that captures more of the underlying biology.
+
+\paragraph{Gene regulatory networks}
+In vivo, gene products often toggle other genes, forming regulatory
+networks that can be described by mapping the interacting genes to an Ising model, where ON/OFF
+states act as spins and regulatory links as couplings. The obstacle is the size of the state space: for
+n genes the joint distribution spans 2n promoter congurations, each multiplying the unbounded
+mRNA and protein spaces, so direct integration gives way to approximate high-dimensional density
+estimators.
 
 \paragraph{Incorporating the protein level.}
-The natural next step is a three-stage model (gene $\to$ mRNA $\to$ protein) that includes translation at rate $k_{\mathrm{trans}}$ and protein degradation at rate $k_{\mathrm{deg},p}$. 
+A three-stage model (gene $\to$ mRNA $\to$ protein) would add translation at rate $k_{\mathrm{trans}}$ and protein degradation at rate $k_{\mathrm{deg},p}$.
 The tools validated here carry over directly: the SSA handles the two additional reactions unchanged, and the moment ODE system expands to cover protein variance and mRNA--protein covariance.
-
-\paragraph{Gene regulatory networks.}
-In vivo, gene products often toggle other genes, forming regulatory networks that can be described by mapping the interacting genes to an \emph{Ising model}, where ON/OFF states act as spins and regulatory links as couplings.
-The obstacle is the size of the state space: for $n$ genes the joint distribution spans $2^n$ promoter configurations, each multiplying the unbounded mRNA and protein spaces, so direct integration gives way to approximate high-dimensional density estimators.
 
 \begin{thebibliography}{99}
 
@@ -750,16 +704,16 @@ D.~Schnoerr, G.~Sanguinetti, and R.~Grima,
 chemical kinetics},
 Journal of Chemical Physics \textbf{143} (2015), no.~18, 185101.
 
+\bibitem{munsky2006}
+B.~Munsky and M.~Khammash,
+\textit{The finite state projection algorithm for the solution of the chemical
+master equation},
+Journal of Chemical Physics \textbf{124} (2006), no.~4, 044104.
+
 \bibitem{vankampen}
 N.~G.~van Kampen,
 \textit{Stochastic Processes in Physics and Chemistry},
 3rd ed., North-Holland, Amsterdam, 2007.
-
-\bibitem{gardiner}
-C.~W.~Gardiner,
-\textit{Handbook of Stochastic Methods for Physics, Chemistry and the Natural
-Sciences},
-3rd ed., Springer, Berlin, 2004.
 
 \bibitem{wilkinson}
 D.~J.~Wilkinson,

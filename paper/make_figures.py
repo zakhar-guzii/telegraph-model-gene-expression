@@ -659,3 +659,172 @@ for name, an, est in zip(("mu_G", "mu_R", "sigma_G", "sigma_R", "C_RG"),
 print("  closed-form check: SE(mu_G)=%.6f  SE(mu_R)=%.6f"
       % (np.sqrt(mu_G_a * (1 - mu_G_a) / SE_N), sig_R_a / np.sqrt(SE_N)))
 print("All appended blocks done.")
+
+
+# ===========================================================================
+# APPEND-ONLY BLOCK 2 (revision).
+#
+# Supplies the four numbers the paper previously left as [INSERT_*] markers,
+# plus the coefficient of variation behind the low-expression claim. Same
+# contract as above: every block re-seeds numpy itself and nothing here is
+# consumed by any earlier block, so all nine pre-existing figures and every
+# number printed above stay bit-for-bit identical.
+# ===========================================================================
+import json  # noqa: E402  (kept here to honour the append-only contract)
+
+RESULTS = {}
+
+
+def measured_cv(m, tail=0.2):
+    """Coefficient of variation sigma_R / mu_R over the stationary tail.
+
+    Same tail-averaging convention as :func:`measured_fano`: a single grid
+    point is far too noisy, so numerator and denominator are each averaged
+    over the last ``tail`` of the horizon before the ratio is taken.
+    """
+    n = m["time"].size
+    lo = int(round((1.0 - tail) * n))
+    return float(np.mean(m["sigma_R"][lo:]) / np.mean(m["mu_R"][lo:]))
+
+
+# ---------------------------------------------------------------------------
+# Per-row uncertainty for tab:param-exp, by multi-seed replication.
+#
+# Each configuration is re-run under K independent seeds and we report the
+# sample SD *across* those K Fano estimates. That is the standard error of a
+# single run's estimate — which is what the +/- on a single tabulated number
+# means. It is deliberately NOT SD/sqrt(K), which would be the SE of the mean
+# of the K runs, a smaller number describing a quantity the table never quotes.
+#
+# Replication is used rather than a bootstrap because compute_sample_moments
+# returns aggregated moments only: there is no per-trajectory array to
+# resample, and resampling the 200 tail *grid points* instead would be wrong,
+# since consecutive grid points of one ensemble are strongly autocorrelated
+# and would understate the spread by a large factor.
+# ---------------------------------------------------------------------------
+print("Table: multi-seed Fano/CV standard errors for tab:param-exp ...")
+
+FANO_SE_K = 10          # replicate seeds per configuration
+
+# One configuration beyond the original eight. The paper's "numerical" comparison
+# moved n_sim and n_rep together, which cannot isolate either; this run holds
+# n_sim at the base 4000 and changes only the ensemble size, so that the pair
+# (base, this) isolates n_rep and the pair (base, "Numeric low") isolates n_sim.
+# Kept in its own list so the original FANO_RUNS block above is untouched.
+FANO_RUNS_EXTRA = [
+    ("Ensemble only",   9, dict(n_rep=224)),
+]
+
+for run_idx, (label, _orig_seed, overrides) in enumerate(FANO_RUNS + FANO_RUNS_EXTRA):
+    p = {**PARAM_BASE, **overrides}
+    f_pred = fano_ss(p["k_on"], p["k_off"], p["k_syn"], p["k_deg"])
+    f_reps, cv_reps = [], []
+    for k in range(FANO_SE_K):
+        np.random.seed(30000 + 100 * run_idx + k)
+        m = compute_sample_moments(simulate_telegraph(**p), n_grid=1000)
+        f_reps.append(measured_fano(m))
+        cv_reps.append(measured_cv(m))
+    f_reps, cv_reps = np.array(f_reps), np.array(cv_reps)
+    RESULTS[label] = dict(
+        F_pred=f_pred,
+        F_mean=float(f_reps.mean()), F_se=float(f_reps.std(ddof=1)),
+        CV_mean=float(cv_reps.mean()), CV_se=float(cv_reps.std(ddof=1)),
+        mu_R_ss=p["k_syn"] / p["k_deg"] * p["k_on"] / (p["k_on"] + p["k_off"]),
+        n_rep=p["n_rep"], n_sim=p["n_sim"], K=FANO_SE_K)
+    print("  %-16s F_pred=%6.2f  F=%6.2f +/- %.2f   CV=%5.3f +/- %.3f"
+          % (label, f_pred, f_reps.mean(), f_reps.std(ddof=1),
+             cv_reps.mean(), cv_reps.std(ddof=1)))
+
+
+# ---------------------------------------------------------------------------
+# Standard error on the Edge-1 log-log slope.
+#
+# e1_sizes / e1_rms are still in scope from the Edge-1 block above, so this
+# only refits them; no simulation is repeated and the figure is untouched.
+#
+# The seven points are NOT homoscedastic: every size except the largest is an
+# average over n_trials=40 subsamples, while N_rep=10000 is a single
+# realisation (it exhausts the pool, so there is nothing to subsample). The
+# plain fit therefore under-weights that extra noise. We report the plain fit
+# with its covariance-based SE and, as a robustness check, the fit with the
+# single-realisation point dropped; if the two agree the caveat is cosmetic.
+# ---------------------------------------------------------------------------
+print("Edge 1: slope standard error ...")
+
+_c, _cov = np.polyfit(np.log10(e1_sizes), np.log10(e1_rms), 1, cov=True)
+e1_slope_full, e1_slope_se = float(_c[0]), float(np.sqrt(_cov[0, 0]))
+_c2, _cov2 = np.polyfit(np.log10(e1_sizes[:-1]), np.log10(e1_rms[:-1]), 1, cov=True)
+e1_slope_drop, e1_slope_drop_se = float(_c2[0]), float(np.sqrt(_cov2[0, 0]))
+
+RESULTS["edge1_slope"] = dict(
+    slope=e1_slope_full, se=e1_slope_se,
+    slope_drop_last=e1_slope_drop, se_drop_last=e1_slope_drop_se,
+    sizes=[int(x) for x in e1_sizes], rms=[float(x) for x in e1_rms])
+print("  slope = %.3f +/- %.3f   (dropping single-realisation point: %.3f +/- %.3f)"
+      % (e1_slope_full, e1_slope_se, e1_slope_drop, e1_slope_drop_se))
+
+
+# ---------------------------------------------------------------------------
+# Same treatment for Edge 2, so the two convergence claims are stated to the
+# same standard rather than one being fitted and the other eyeballed.
+#
+# n_reps / errs are in scope from the steady-state convergence figure. Unlike
+# the Edge-1 sizes these are homoscedastic -- all 25 points average over the
+# same n_trials=40 -- so the plain covariance-based SE needs no caveat.
+# ---------------------------------------------------------------------------
+print("Edge 2: slope standard error ...")
+
+_c3, _cov3 = np.polyfit(np.log10(n_reps), np.log10(errs), 1, cov=True)
+e2_slope, e2_slope_se = float(_c3[0]), float(np.sqrt(_cov3[0, 0]))
+RESULTS["edge2_slope"] = dict(slope=e2_slope, se=e2_slope_se,
+                              n_points=int(n_reps.size), n_trials=40)
+print("  slope = %.3f +/- %.3f  (over %d sizes)" % (e2_slope, e2_slope_se, n_reps.size))
+
+
+# ---------------------------------------------------------------------------
+# k_off = 0 boundary: Fano factor of the constitutive gene, with a bootstrap SE.
+#
+# This number was previously computed only in notebooks/validation.ipynb and
+# hand-copied; recomputing it here puts it under the same reproducible seed as
+# validation_poisson.png, which is drawn from an identical sampler call.
+# R_samples are i.i.d. draws, so the tab:moments bootstrap applies directly.
+# ---------------------------------------------------------------------------
+print("Boundary k_off=0: Fano factor with bootstrap SE ...")
+np.random.seed(20260722)
+
+POIS_N, POIS_BOOT = 100000, 400
+_edge = sample_steady_state(k_on=0.5, k_off=0.0, k_syn=10.0, k_deg=1.0, n_rep=POIS_N)
+_R = _edge["R_samples"]
+pois_fano = float(_R.var(ddof=1) / _R.mean())
+_bf = np.empty(POIS_BOOT)
+for b in range(POIS_BOOT):
+    _s = _R[np.random.randint(0, POIS_N, size=POIS_N)]
+    _bf[b] = _s.var(ddof=1) / _s.mean()
+pois_fano_se = float(_bf.std(ddof=1))
+
+RESULTS["poisson_boundary"] = dict(fano=pois_fano, se=pois_fano_se,
+                                   n_rep=POIS_N, n_boot=POIS_BOOT, theory=1.0)
+print("  Fano(k_off=0) = %.4f +/- %.4f  (theory 1)" % (pois_fano, pois_fano_se))
+
+
+# ---------------------------------------------------------------------------
+# Low-expression moment traces (new figure for the CV claim in sec:res-explore).
+#
+# The comment beside the switching-speed figures above says the expression runs
+# are reported through the table rather than as figures. That is no longer
+# true for the low-expression run: the text now makes a quantitative claim
+# about its coefficient of variation, so the run it describes is shown.
+# ---------------------------------------------------------------------------
+print("Figure: param_expression_low.png")
+save_param_experiment("param_expression_low.png", "Low-Expression Regime",
+                      seed=4, k_on=0.5, k_off=10, k_syn=30)
+
+
+# ---------------------------------------------------------------------------
+# Machine-readable dump, so the numbers in main.tex can be diffed against the
+# run that produced them instead of being trusted to hand-transcription.
+# ---------------------------------------------------------------------------
+with open(os.path.join(os.path.dirname(OUT), "results.json"), "w") as fh:
+    json.dump(RESULTS, fh, indent=2, sort_keys=True)
+print("Wrote results.json")
+print("Revision block done.")
